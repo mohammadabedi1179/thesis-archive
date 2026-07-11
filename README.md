@@ -102,14 +102,22 @@ is a one-line edit to its `chapter` field in `data.js`.
 
 ## UI details
 
-- **Tile hover:** the hovered tile lifts and scales up while its neighbors
-  dim slightly — the "separates from the shelf" effect you asked for.
-- **Tile previews are live**, not static screenshots: each tile embeds the
-  real file at a fixed virtual size and shrinks it to fit, so what you see
-  is an accurate, always-up-to-date first frame of the actual document.
+- **Document tiles are a 3D perspective shelf**, not a flat grid: tiles stand
+  at an angle like books on a shelf. Hovering one turns it to face you and
+  lifts it forward while its two neighbors slide apart to make room; the
+  rest of the row dims. Clicking animates the tile growing to fill the
+  screen, then hands off to its real URL (`/view/<id>/`) — so the "coming
+  out of the shelf" effect leads straight into a normal, linkable page.
+- **Tile previews are live**, not static screenshots: each one embeds the
+  real file at a fixed virtual size and crops/scales it to fit (`object-fit:
+  cover` behavior), so what you see is an accurate, always-up-to-date first
+  frame of the actual document.
+- Chapters with more documents than fit on screen scroll horizontally —
+  the shelf, not the whole page.
 - **Empty chapters** (فصل ۳، فصل ۶، پیوست‌ها، موارد اضافی right now) still
   show up on the home page and have their own page with a friendly
   "nothing here yet" state — nothing 404s.
-- Sidebar/menu-bar navigation from the previous version is gone — replaced
-  by real page-to-page navigation, so the browser back button, refresh, and
-  sharing a link to any single chapter or document all just work.
+- All navigation is real page-to-page navigation (plain links under the
+  hood), so the browser back button, refresh, and sharing a link to any
+  single chapter or document all just work — the shelf animation is a
+  transition layered on top, not a replacement for it.
