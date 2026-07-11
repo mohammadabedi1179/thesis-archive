@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>از تصویر استریو تا ابرنقاط</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF6F0; --edge:#D8CABD; --text:#463F3A; --muted:#6B625B; --paper:#FFFDF9;
+    --n1:#5B7FA6; --n2:#6E8F5D; --n3:#C2703D; --n4:#8171A8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);}
+  body{ font-family:'Vazirmatn',Tahoma,Arial,sans-serif; color:var(--text); min-height:100vh; }
+  body::before{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(to right, rgba(232,221,210,0.55) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(232,221,210,0.55) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image: radial-gradient(circle at 50% 30%, black 0%, transparent 72%);
+  }
+  .wrap{ position:relative; z-index:1; max-width:1300px; margin:0 auto; padding:40px 24px 60px; }
+  .page-head{ text-align:center; margin-bottom:26px; }
+  .page-eyebrow{ font-size:12.5px; font-weight:600; letter-spacing:.16em; color:var(--n3); text-transform:uppercase; margin:0 0 10px; }
+  .page-title{ font-size:26px; font-weight:800; margin:0 0 8px; }
+  .page-sub{ font-size:13.5px; color:var(--muted); margin:0; font-weight:500; }
+
+  .stage-outer{ position:relative; width:100%; margin-top:26px; }
+  .stage{ position:relative; width:1160px; height:370px; transform-origin:top right; }
+  svg#lines{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; z-index:1; }
+  .mk{ fill:var(--muted); }
+  .edge{ transition:opacity .3s ease; opacity:1; }
+  .edge.dim{ opacity:.08; }
+  .edge path{ fill:none; stroke:var(--muted); stroke-width:2.5; stroke-linecap:round; stroke-dasharray:2 7; }
+  .edge.active path{ stroke:var(--text); stroke-width:3; }
+
+  @keyframes flow-move{ from{ offset-distance:0%; } to{ offset-distance:100%; } }
+  .pparticle{ position:absolute; top:0; left:0; z-index:6; border-radius:4px; border:1.5px solid var(--paper); box-shadow:0 2px 6px rgba(70,63,58,.25); opacity:.92; transition:opacity .3s ease; }
+  .pparticle.dim{ opacity:.05; }
+
+  .node{
+    position:absolute; background:var(--paper); border:2px solid var(--edge); border-radius:16px;
+    box-shadow:0 2px 10px rgba(70,63,58,.06); overflow:hidden; cursor:pointer; z-index:2;
+    transition:width .45s cubic-bezier(.4,0,.2,1), height .45s cubic-bezier(.4,0,.2,1), opacity .3s ease, box-shadow .3s ease;
+  }
+  .node.dim{ opacity:.32; }
+  .node.expanded{ z-index:10; box-shadow:0 16px 38px rgba(70,63,58,.22); }
+  .nhead{ padding:12px 16px; display:flex; align-items:center; gap:9px; color:#FBF8F3; }
+  .node[data-id="n1"] .nhead{ background:var(--n1); } .node[data-id="n1"]{ border-color:var(--n1); }
+  .node[data-id="n2"] .nhead{ background:var(--n2); } .node[data-id="n2"]{ border-color:var(--n2); }
+  .node[data-id="n3"] .nhead{ background:var(--n3); } .node[data-id="n3"]{ border-color:var(--n3); }
+  .node[data-id="n4"] .nhead{ background:var(--n4); } .node[data-id="n4"]{ border-color:var(--n4); }
+  .nnum{ width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,.28); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11.5px; flex:0 0 auto; }
+  .ntitle{ font-weight:800; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .nbody{ position:relative; height:calc(100% - 46px); }
+  .preview, .anim{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:14px; text-align:center; }
+  .preview{ opacity:1; transition:opacity .3s ease; }
+  .anim{ opacity:0; transition:opacity .3s ease; }
+  .node.expanded .preview{ opacity:0; }
+  .node.expanded .anim{ opacity:1; }
+
+  .icon-badge{ width:42px; height:42px; border-radius:11px; background:var(--bg); border:1.5px solid var(--edge); display:flex; align-items:center; justify-content:center; }
+  .icon-badge svg{ width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .preview .cap{ font-size:11.5px; color:var(--muted); font-weight:600; max-width:170px; }
+  .hintTxt{ font-size:10px; color:var(--muted); opacity:.7; }
+
+  canvas{ border-radius:7px; border:1.5px solid var(--edge); background:#fff; display:block; }
+  .capline{ font-size:11.5px; font-weight:700; min-height:15px; opacity:0; }
+  .formula{ background:var(--bg); border:2px solid var(--edge); border-radius:10px; padding:6px 16px; font-size:16px; font-weight:800; font-family:'Times New Roman',serif; }
+
+  @keyframes capA{ 0%,8%{opacity:0;} 20%,48%{opacity:1;} 58%{opacity:0;} 100%{opacity:0;} }
+  @keyframes capC{ 0%,76%{opacity:0;} 84%,99%{opacity:1;} 100%{opacity:0;} }
+
+  /* ===== n1: camera + baseline + two lanes flowing ===== */
+  .n1-cam{ display:flex; align-items:center; gap:8px; }
+  .n1-cam svg{ width:34px; height:34px; stroke:var(--n1); fill:none; stroke-width:1.7; }
+  .n1-base{ font-size:12px; font-weight:800; color:var(--n1); font-family:monospace; }
+  .n1-track{ position:relative; width:340px; height:150px; overflow:hidden; margin-top:6px; padding-top:18px; }
+  .n1-lane{ position:relative; height:60px; margin-bottom:14px; }
+  .n1-lane span.lbl{ position:absolute; right:0; top:-16px; font-size:11px; font-weight:700; }
+  .n1-lane.l span.lbl{ color:var(--n1); } .n1-lane.r span.lbl{ color:var(--n2); }
+  .n1-token{ position:absolute; top:0; width:130px; height:60px; }
+  .node[data-id="n1"].expanded .n1-token{ animation:n1Move 4s linear infinite; }
+  .node[data-id="n1"].expanded .n1-r{ animation-delay:.15s; }
+  @keyframes n1Move{ 0%{ left:-150px; } 20%{ left:0; } 90%{ left:210px; } 100%{ left:240px; } }
+
+  /* ===== n2: rectify — tilt-in then align, epipolar dots ===== */
+  .n2-row{ display:flex; gap:10px; }
+  .n2-img{ transform-origin:center center; }
+  .node[data-id="n2"].expanded .n2-l{ animation:n2TiltL 4.6s ease-in-out infinite; }
+  .node[data-id="n2"].expanded .n2-r{ animation:n2TiltR 4.6s ease-in-out infinite; }
+  @keyframes n2TiltL{ 0%,8%{ transform:rotate(4deg); } 30%,100%{ transform:rotate(0deg); } }
+  @keyframes n2TiltR{ 0%,8%{ transform:rotate(-4deg); } 30%,100%{ transform:rotate(0deg); } }
+  .n2-wrap{ position:relative; }
+  .n2-dot{ position:absolute; width:9px; height:9px; border-radius:50%; opacity:0; transform:translate(-50%,-50%); }
+  .node[data-id="n2"].expanded .n2-dot{ animation:dotIn 4.6s ease-in-out infinite; }
+  @keyframes dotIn{ 0%,42%{opacity:0; transform:translate(-50%,-50%) scale(.4);} 52%,90%{opacity:1; transform:translate(-50%,-50%) scale(1);} 100%{opacity:0;} }
+  .n2-line{ position:absolute; height:0; border-top:1.5px dashed rgba(74,111,160,.55); opacity:0; }
+  .node[data-id="n2"].expanded .n2-line{ animation:dotIn 4.6s ease-in-out infinite; }
+  .node[data-id="n2"].expanded .cap-n2{ animation:capC 4.6s ease-in-out infinite; color:var(--n2); }
+
+  /* ===== n3: disparity — self-contained measurement diagram + legended map ===== */
+  .node[data-id="n3"].expanded #n3Measure{ animation:measureIn 4.2s ease-in-out infinite; }
+  @keyframes measureIn{ 0%,10%{opacity:0; transform:scale(.92);} 22%,100%{opacity:1; transform:scale(1);} }
+  .node[data-id="n3"].expanded .cap-n3a{ animation:capA 4.2s ease-in-out infinite; color:var(--n3); }
+  .n3-mapRow{ display:flex; align-items:center; gap:8px; margin-top:6px; }
+  .n3-barlbl{ display:flex; flex-direction:column; justify-content:space-between; height:72px; font-size:9.5px; font-weight:700; color:var(--muted); }
+  .node[data-id="n3"].expanded .cap-n3b{ animation:capC 4.2s ease-in-out infinite; color:var(--n3); }
+
+  /* ===== n4: point cloud reveal ===== */
+  .n4-stack{ position:relative; width:170px; height:110px; }
+  .n4-stack canvas{ position:absolute; top:0; left:0; }
+  .n4-cloud{ opacity:0; }
+  .node[data-id="n4"].expanded .n4-cloud{ animation:cloudIn 4.4s ease-in-out infinite; }
+  @keyframes cloudIn{ 0%,20%{opacity:0;} 34%,100%{opacity:1;} }
+  .node[data-id="n4"].expanded .cap-n4{ animation:capC 4.4s ease-in-out infinite; color:var(--n4); }
+
+  @media (max-width:1000px){ .page-title{font-size:21px;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-head">
+    <p class="page-eyebrow">هندسه استریو</p>
+    <h1 class="page-title">از تصویر استریو تا ابرنقاط</h1>
+    <p class="page-sub">نشانگر ماوس را روی هر مرحله نگه دارید تا جزئیات محاسبه آن نمایش داده شود</p>
+  </div>
+
+  <div class="stage-outer" id="stageOuter">
+    <div class="stage" id="stage">
+
+      <svg id="lines" viewBox="0 0 1160 370">
+        <defs><marker id="mk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10Z" class="mk"></path></marker></defs>
+        <g class="edge" data-id="e1" data-source="n1" data-target="n2"><path d="M260,185 L320,185" marker-end="url(#mk)"></path></g>
+        <g class="edge" data-id="e2" data-source="n2" data-target="n3"><path d="M550,185 L610,185" marker-end="url(#mk)"></path></g>
+        <g class="edge" data-id="e3" data-source="n3" data-target="n4"><path d="M840,185 L900,185" marker-end="url(#mk)"></path></g>
+      </svg>
+
+      <canvas class="pparticle" data-edge="e1" data-lane="l" width="30" height="17" style="offset-path:path('M260,171 L320,171'); animation:flow-move 1.8s linear infinite;"></canvas>
+      <canvas class="pparticle" data-edge="e1" data-lane="r" width="30" height="17" style="offset-path:path('M260,199 L320,199'); animation:flow-move 1.8s linear infinite; animation-delay:-.9s;"></canvas>
+      <canvas class="pparticle" data-edge="e2" data-lane="l" width="30" height="17" style="offset-path:path('M550,171 L610,171'); animation:flow-move 1.8s linear infinite;"></canvas>
+      <canvas class="pparticle" data-edge="e2" data-lane="r" width="30" height="17" style="offset-path:path('M550,199 L610,199'); animation:flow-move 1.8s linear infinite; animation-delay:-.9s;"></canvas>
+      <canvas class="pparticle" data-edge="e3" data-lane="l" width="30" height="17" style="offset-path:path('M840,185 L900,185'); animation:flow-move 1.8s linear infinite;"></canvas>
+
+      <div class="node" data-id="n1" style="left:30px; top:60px; width:230px; height:250px;">
+        <div class="nhead"><span class="nnum">۱</span><span class="ntitle">تصاویر همزمان چپ و راست</span></div>
+        <div class="nbody">
+          <div class="preview">
+            <div class="icon-badge" style="color:var(--n1)"><svg viewBox="0 0 44 44"><rect x="6" y="14" width="32" height="20" rx="4"></rect><circle cx="16" cy="24" r="5"></circle><circle cx="28" cy="24" r="5"></circle></svg></div>
+            <div class="cap">دو دوربین با فاصله پایه ۰.۰۶ متر</div>
+            <div class="hintTxt">نگه دارید</div>
+          </div>
+          <div class="anim">
+            <div class="n1-cam"><svg viewBox="0 0 44 44"><rect x="6" y="14" width="32" height="20" rx="4"></rect><circle cx="16" cy="24" r="5"></circle><circle cx="28" cy="24" r="5"></circle></svg><span class="n1-base">B = 0.06 m</span></div>
+            <div class="n1-track">
+              <div class="n1-lane l"><span class="lbl">چپ</span><canvas class="n1-token n1-l" id="n1L" width="130" height="60"></canvas></div>
+              <div class="n1-lane r"><span class="lbl">راست</span><canvas class="n1-token n1-r" id="n1R" width="130" height="60"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="node" data-id="n2" style="left:320px; top:60px; width:230px; height:250px;">
+        <div class="nhead"><span class="nnum">۲</span><span class="ntitle">تصحیح استریو و همراستاسازی</span></div>
+        <div class="nbody">
+          <div class="preview">
+            <div class="icon-badge" style="color:var(--n2)"><svg viewBox="0 0 44 44"><path d="M6 14h32M6 22h32M6 30h32"></path></svg></div>
+            <div class="cap">هم‌راستاسازی روی خطوط اپی‌پولار افقی</div>
+            <div class="hintTxt">نگه دارید</div>
+          </div>
+          <div class="anim">
+            <div class="n2-row">
+              <div class="n2-wrap"><canvas class="n2-img n2-l" id="n2L" width="100" height="72"></canvas>
+                <div class="n2-dot" style="background:#e5484d; top:14px; left:50px;"></div>
+                <div class="n2-dot" style="background:#4caf50; top:38px; left:35px; animation-delay:.15s;"></div>
+                <div class="n2-dot" style="background:#f2c14e; top:56px; left:65px; animation-delay:.3s;"></div>
+                <div class="n2-line" style="top:14px; left:0; width:100px;"></div>
+                <div class="n2-line" style="top:38px; left:0; width:100px; animation-delay:.15s;"></div>
+                <div class="n2-line" style="top:56px; left:0; width:100px; animation-delay:.3s;"></div>
+              </div>
+              <div class="n2-wrap"><canvas class="n2-img n2-r" id="n2R" width="100" height="72"></canvas>
+                <div class="n2-dot" style="background:#e5484d; top:14px; left:46px;"></div>
+                <div class="n2-dot" style="background:#4caf50; top:38px; left:30px; animation-delay:.15s;"></div>
+                <div class="n2-dot" style="background:#f2c14e; top:56px; left:60px; animation-delay:.3s;"></div>
+              </div>
+            </div>
+            <div class="capline cap-n2">نقاط متناظر روی یک سطر</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="node" data-id="n3" style="left:610px; top:60px; width:230px; height:250px;">
+        <div class="nhead"><span class="nnum">۳</span><span class="ntitle">نقشه اختلاف مکانی</span></div>
+        <div class="nbody">
+          <div class="preview">
+            <div class="icon-badge" style="color:var(--n3)"><svg viewBox="0 0 44 44"><rect x="6" y="10" width="32" height="24" rx="3"></rect><circle cx="16" cy="22" r="2.5" fill="currentColor" stroke="none"></circle><circle cx="28" cy="22" r="2.5" fill="currentColor" stroke="none"></circle></svg></div>
+            <div class="cap">d = u_L − u_R</div>
+            <div class="hintTxt">نگه دارید</div>
+          </div>
+          <div class="anim">
+            <div class="formula" style="color:var(--n3);">d = u<sub>L</sub> − u<sub>R</sub></div>
+            <canvas id="n3Measure" width="210" height="100"></canvas>
+            <div class="capline cap-n3a">همان جسم، در دو تصویر، در موقعیت افقی متفاوت</div>
+            <div class="n3-mapRow">
+              <canvas id="n3Disp" width="120" height="72"></canvas>
+              <canvas id="n3Bar" width="14" height="72"></canvas>
+              <div class="n3-barlbl"><span>نزدیک</span><span>دور</span></div>
+            </div>
+            <div class="capline cap-n3b">این محاسبه برای تک‌تک پیکسل‌ها تکرار می‌شود</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="node" data-id="n4" style="left:900px; top:60px; width:230px; height:250px;">
+        <div class="nhead"><span class="nnum">۴</span><span class="ntitle">نقشه عمق و ابرنقاط</span></div>
+        <div class="nbody">
+          <div class="preview">
+            <div class="icon-badge" style="color:var(--n4)"><svg viewBox="0 0 44 44"><circle cx="10" cy="30" r="2"></circle><circle cx="18" cy="24" r="2"></circle><circle cx="26" cy="30" r="2"></circle><circle cx="34" cy="20" r="2"></circle><circle cx="14" cy="14" r="2"></circle><circle cx="30" cy="12" r="2"></circle></svg></div>
+            <div class="cap">Z = fB / d</div>
+            <div class="hintTxt">نگه دارید</div>
+          </div>
+          <div class="anim">
+            <div class="formula" style="color:var(--n4);">Z = fB / d</div>
+            <canvas id="n4Depth" width="150" height="70"></canvas>
+            <div class="n4-stack">
+              <canvas class="n4-cloud" id="n4Cloud" width="170" height="110"></canvas>
+            </div>
+            <div class="capline cap-n4">نقشه عمق → ابرنقاط سه‌بعدی</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var W=640, H=348;
+  function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function drawCar(ctx,w,h,x,y,body){
+    var cw=w*0.16, ch=h*0.11;
+    ctx.fillStyle=body; rr(ctx,x,y,cw,ch,ch*0.35); ctx.fill();
+    ctx.fillStyle='#DCEAF2'; rr(ctx,x+cw*0.16,y-ch*0.55,cw*0.5,ch*0.6,ch*0.18); ctx.fill();
+    ctx.fillStyle='#221f1d';
+    ctx.beginPath(); ctx.arc(x+cw*0.2,y+ch,ch*0.34,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+cw*0.82,y+ch,ch*0.34,0,7); ctx.fill();
+    ctx.fillStyle='#E4533A'; ctx.fillRect(x+cw*0.94,y+ch*0.18,cw*0.06,ch*0.28);
+    ctx.fillStyle='#FFE7A3'; ctx.fillRect(x-cw*0.02,y+ch*0.18,cw*0.06,ch*0.28);
+  }
+  function drawPerson(ctx,w,h,x,y,scale,shirt){
+    var headR=h*0.045*scale, bodyW=h*0.08*scale, bodyH=h*0.17*scale;
+    ctx.fillStyle='#E8B893'; ctx.beginPath(); ctx.arc(x,y-bodyH-headR,headR,0,7); ctx.fill();
+    ctx.fillStyle=shirt; rr(ctx,x-bodyW/2,y-bodyH,bodyW,bodyH*0.62,bodyW*0.3); ctx.fill();
+    ctx.fillStyle='#39393c'; rr(ctx,x-bodyW/2,y-bodyH*0.38,bodyW,bodyH*0.38,bodyW*0.16); ctx.fill();
+  }
+  function drawScene(ctx,w,h,shift){
+    ctx.clearRect(0,0,w,h);
+    var g=ctx.createLinearGradient(0,0,0,h*0.6); g.addColorStop(0,'#8ecae6'); g.addColorStop(1,'#d8f3ff');
+    ctx.fillStyle=g; ctx.fillRect(0,0,w,h*0.6);
+    ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.arc(w*0.78+shift*0.2,h*0.16,w*0.04,0,7); ctx.fill();
+    ctx.fillStyle='#6b7280'; ctx.fillRect(0,h*0.6,w,h*0.4);
+    ctx.fillStyle='#8b93a0'; ctx.fillRect(0,h*0.6,w,h*0.045);
+    ctx.fillStyle='#8b93a0'; ctx.fillRect(0,h*0.95,w,h*0.05);
+    ctx.strokeStyle='#fefefe'; ctx.lineWidth=Math.max(1,w*0.01); ctx.setLineDash([w*0.028,w*0.028]);
+    ctx.beginPath(); ctx.moveTo(w*0.5+shift,h*0.64); ctx.lineTo(w*0.5+shift*0.3,h); ctx.stroke(); ctx.setLineDash([]);
+    for(var i=0;i<3;i++){
+      var x=w*0.08+i*w*0.08+shift, y=h*0.56;
+      ctx.fillStyle='#7a5230'; ctx.fillRect(x-w*0.008,y-h*0.09,w*0.016,h*0.09);
+      ctx.fillStyle='#2f6b3a'; ctx.beginPath(); ctx.arc(x,y-h*0.12,w*0.035,0,7); ctx.fill();
+    }
+    ctx.fillStyle='#4b5563';
+    ctx.fillRect(w-w*0.24+shift*0.5,h*0.3,w*0.08,h*0.32);
+    ctx.fillRect(w-w*0.14+shift*0.5,h*0.38,w*0.06,h*0.24);
+    drawCar(ctx,w,h,w*0.34+shift*0.6,h*0.75,'#B0463F');
+    drawPerson(ctx,w,h,w*0.13+shift,h*0.94,1,'#4C7EA8');
+    drawPerson(ctx,w,h,w*0.63+shift*0.8,h*0.92,0.85,'#C9793E');
+  }
+  function jet(t){
+    t=Math.max(0,Math.min(1,t));
+    var r,g,b;
+    if(t<0.25){ r=0; g=4*t; b=1; }
+    else if(t<0.5){ r=0; g=1; b=1-4*(t-0.25); }
+    else if(t<0.75){ r=4*(t-0.5); g=1; b=0; }
+    else { r=1; g=1-4*(t-0.75); b=0; }
+    return [r*255,g*255,b*255];
+  }
+  function makeColorMap(w,h,carRectPct){
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    var ctx=c.getContext('2d'); var out=ctx.createImageData(w,h);
+    var cx0=carRectPct[0]*w, cy0=carRectPct[1]*h, cx1=cx0+carRectPct[2]*w, cy1=cy0+carRectPct[3]*h;
+    for(var y=0;y<h;y++){
+      for(var x=0;x<w;x++){
+        var t = (y/h)*1.05-0.03;
+        if(x>=cx0 && x<=cx1 && y>=cy0 && y<=cy1) t=0.93;
+        var col=jet(t);
+        var i=(y*w+x)*4;
+        out.data[i]=col[0]; out.data[i+1]=col[1]; out.data[i+2]=col[2]; out.data[i+3]=255;
+      }
+    }
+    ctx.putImageData(out,0,0);
+    return c;
+  }
+  function blit(from,to){ var t=to.getContext('2d'); t.imageSmoothingEnabled=true; t.drawImage(from,0,0,to.width,to.height); }
+
+  function drawSmallCar(ctx,x,y,w,h,color){
+    ctx.fillStyle=color;
+    rr(ctx,x,y+h*0.4,w,h*0.6,3); ctx.fill();
+    rr(ctx,x+w*0.16,y,w*0.55,h*0.45,2.5); ctx.fill();
+  }
+  function makeMeasureCanvas(w,h){
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    var ctx=c.getContext('2d');
+    ctx.fillStyle='#EAF4FB'; ctx.fillRect(0,0,w,h*0.62);
+    ctx.fillStyle='#9aa0a8'; ctx.fillRect(0,h*0.62,w,h*0.38);
+
+    var carW=w*0.2, carH=h*0.24, carY=h*0.55;
+    var xL=w*0.66, xR=w*0.30;
+    drawSmallCar(ctx, xR-carW/2, carY-carH, carW, carH, '#C2703D');
+    drawSmallCar(ctx, xL-carW/2, carY-carH, carW, carH, '#4A6FA0');
+
+    var baseY = h*0.82;
+    ctx.setLineDash([2,3]); ctx.lineWidth=1.2;
+    ctx.strokeStyle='#4A6FA0'; ctx.beginPath(); ctx.moveTo(xL,carY-carH*0.2); ctx.lineTo(xL,baseY); ctx.stroke();
+    ctx.strokeStyle='#C2703D'; ctx.beginPath(); ctx.moveTo(xR,carY-carH*0.2); ctx.lineTo(xR,baseY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.strokeStyle='#8a8074'; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(w*0.08,baseY); ctx.lineTo(w*0.92,baseY); ctx.stroke();
+    ctx.fillStyle='#4A6FA0'; ctx.beginPath(); ctx.arc(xL,baseY,3.2,0,7); ctx.fill();
+    ctx.fillStyle='#C2703D'; ctx.beginPath(); ctx.arc(xR,baseY,3.2,0,7); ctx.fill();
+
+    var arrY = baseY + 16;
+    ctx.strokeStyle='#6B625B'; ctx.lineWidth=1.3;
+    ctx.beginPath(); ctx.moveTo(xR,arrY); ctx.lineTo(xL,arrY); ctx.stroke();
+    function head(px,dir){ ctx.beginPath(); ctx.moveTo(px,arrY); ctx.lineTo(px+dir*6,arrY-3); ctx.lineTo(px+dir*6,arrY+3); ctx.closePath(); ctx.fillStyle='#6B625B'; ctx.fill(); }
+    head(xR,-1); head(xL,1);
+
+    ctx.textAlign='center'; ctx.font='bold 12px monospace';
+    ctx.fillStyle='#4A6FA0'; ctx.fillText('u_L', xL, baseY+30);
+    ctx.fillStyle='#C2703D'; ctx.fillText('u_R', xR, baseY+30);
+    ctx.fillStyle='#463F3A'; ctx.font='bold 13px monospace';
+    ctx.fillText('d', (xL+xR)/2, arrY-8);
+    return c;
+  }
+  function makeColorbar(w,h){
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    var ctx=c.getContext('2d');
+    for(var y=0;y<h;y++){
+      var t = 1-(y/h);
+      var col=jet(t);
+      ctx.fillStyle='rgb('+col[0]+','+col[1]+','+col[2]+')';
+      ctx.fillRect(0,y,w,1);
+    }
+    return c;
+  }
+
+  function drawPointCloud(canvas){
+    var ctx=canvas.getContext('2d'), w=canvas.width, h=canvas.height;
+    ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h);
+    // perspective ground grid
+    ctx.strokeStyle='rgba(70,63,58,.18)'; ctx.lineWidth=1;
+    var vx=w*0.5, vy=h*0.18;
+    for(var i=-4;i<=4;i++){
+      ctx.beginPath(); ctx.moveTo(vx+i*w*0.09, h); ctx.lineTo(vx+i*0.02*w, vy); ctx.stroke();
+    }
+    for(var j=0;j<5;j++){
+      var yy = vy + (h-vy)*(j/4)*(j/4);
+      ctx.beginPath(); ctx.moveTo(0,yy); ctx.lineTo(w,yy); ctx.stroke();
+    }
+    // scattered "points": road, trees (sides), car cluster (center-near)
+    function dot(px,py,t){
+      var col=jet(t);
+      ctx.fillStyle='rgba('+col[0]+','+col[1]+','+col[2]+',0.85)';
+      ctx.beginPath(); ctx.arc(px,py,1.4,0,7); ctx.fill();
+    }
+    var i;
+    for(i=0;i<260;i++){
+      var depth = Math.random();
+      var py = vy + (h-vy)*depth*depth;
+      var spread = (1-depth)*w*0.42;
+      var px = vx + (Math.random()*2-1)*spread;
+      dot(px,py, 0.15+depth*0.55);
+    }
+    // tree clusters left/right
+    [ -0.34, 0.34 ].forEach(function(side){
+      for(i=0;i<70;i++){
+        var depth = Math.random()*0.85+0.1;
+        var py = vy + (h-vy)*depth*depth - Math.random()*18;
+        var px = vx + side*w*(0.55-depth*0.25) + (Math.random()*10-5);
+        dot(px,py, 0.05+depth*0.3);
+      }
+    });
+    // car cluster (near, center)
+    for(i=0;i<90;i++){
+      var px = vx + (Math.random()*26-13);
+      var py = h - Math.random()*26 - 6;
+      dot(px,py, 0.82+Math.random()*0.15);
+    }
+    ctx.fillStyle='rgba(70,63,58,.55)';
+    ctx.font='bold 9px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('X (m)', w*0.82, h-4);
+    ctx.fillText('Z (m)', w*0.14, h-4);
+  }
+
+  var offColor=document.createElement('canvas'); offColor.width=W; offColor.height=H; drawScene(offColor.getContext('2d'),W,H,0);
+  var offColorR=document.createElement('canvas'); offColorR.width=W; offColorR.height=H; drawScene(offColorR.getContext('2d'),W,H,16);
+  var carRect=[0.33,0.60,0.19,0.30];
+  var colorMap=makeColorMap(W,H,carRect);
+
+  blit(offColor, document.getElementById('n1L'));
+  blit(offColorR, document.getElementById('n1R'));
+  blit(offColor, document.getElementById('n2L'));
+  blit(offColorR, document.getElementById('n2R'));
+  blit(colorMap, document.getElementById('n3Disp'));
+  blit(makeMeasureCanvas(210,100), document.getElementById('n3Measure'));
+  blit(makeColorbar(14,72), document.getElementById('n3Bar'));
+  blit(colorMap, document.getElementById('n4Depth'));
+  drawPointCloud(document.getElementById('n4Cloud'));
+
+  var particleSrc = { e1:{l:offColor,r:offColorR}, e2:{l:offColor,r:offColorR}, e3:{l:colorMap,r:colorMap} };
+  document.querySelectorAll('.pparticle').forEach(function(p){
+    var edge=p.getAttribute('data-edge'), lane=p.getAttribute('data-lane');
+    var src = particleSrc[edge] && particleSrc[edge][lane];
+    if(src) blit(src, p);
+  });
+
+  var nodes = Array.prototype.slice.call(document.querySelectorAll('.node'));
+  var edges = Array.prototype.slice.call(document.querySelectorAll('.edge'));
+  var particles = Array.prototype.slice.call(document.querySelectorAll('.pparticle'));
+  var restW={}, restH={};
+  nodes.forEach(function(n){ restW[n.getAttribute('data-id')]=n.style.width; restH[n.getAttribute('data-id')]=n.style.height; });
+  var expandedSize = { n1:{w:'420px',h:'320px'}, n2:{w:'460px',h:'340px'}, n3:{w:'400px',h:'400px'}, n4:{w:'420px',h:'440px'} };
+  var locked=null;
+
+  function clearAll(){
+    nodes.forEach(function(n){
+      var id=n.getAttribute('data-id');
+      n.classList.remove('expanded','dim');
+      n.style.width=restW[id]; n.style.height=restH[id];
+    });
+    edges.forEach(function(e){ e.classList.remove('active','dim'); });
+    particles.forEach(function(p){ p.classList.remove('dim'); });
+  }
+  function activate(id){
+    var connected={}; connected[id]=true; var activeEdges={};
+    edges.forEach(function(edge){
+      var src=edge.getAttribute('data-source'), tgt=edge.getAttribute('data-target');
+      if(src===id || tgt===id){ connected[src]=true; connected[tgt]=true; activeEdges[edge.getAttribute('data-id')]=true; }
+    });
+    nodes.forEach(function(n){
+      var nid=n.getAttribute('data-id');
+      if(nid===id){ n.classList.add('expanded'); n.classList.remove('dim'); n.style.width=expandedSize[id].w; n.style.height=expandedSize[id].h; }
+      else { n.classList.remove('expanded'); n.classList.add('dim'); n.style.width=restW[nid]; n.style.height=restH[nid]; }
+    });
+    edges.forEach(function(e){
+      var eid=e.getAttribute('data-id');
+      if(activeEdges[eid]){ e.classList.add('active'); e.classList.remove('dim'); }
+      else { e.classList.remove('active'); e.classList.add('dim'); }
+    });
+    particles.forEach(function(p){
+      if(activeEdges[p.getAttribute('data-edge')]) p.classList.remove('dim'); else p.classList.add('dim');
+    });
+  }
+  nodes.forEach(function(n){
+    var id=n.getAttribute('data-id');
+    n.addEventListener('mouseenter', function(){ if(!locked) activate(id); });
+    n.addEventListener('mouseleave', function(){ if(!locked) clearAll(); });
+    n.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      if(locked===id){ locked=null; clearAll(); }
+      else { locked=id; activate(id); }
+    });
+  });
+  document.addEventListener('click', function(){ locked=null; clearAll(); });
+
+  var stageOuter=document.getElementById('stageOuter'), stage=document.getElementById('stage');
+  function fit(){
+    var w=stageOuter.clientWidth;
+    var scale=Math.min(1, w/1160);
+    stage.style.transform='scale('+scale+')';
+    stageOuter.style.height=(370*scale)+'px';
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  fit();
+})();
+</script>
+</body>
+</html>

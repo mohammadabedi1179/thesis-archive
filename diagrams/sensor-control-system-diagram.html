@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>معماری حسگری و کنترلی | اسکوتر خودران</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF6F0;
+    --grid:#E8DDD2;
+    --text:#463F3A;
+    --muted:#6B625B;
+    --edge:#D8CABD;
+    --primary:#7D9D9C;
+    --secondary:#C9A27E;
+    --accent:#B7A99A;
+    --paper:#FFFDF9;
+    --data:#3E7C78;
+    --data-dot:#5FBDB4;
+    --command:#B9791E;
+    --command-dot:#E3A857;
+  }
+
+  *{box-sizing:border-box;}
+
+  html,body{margin:0;background:var(--bg);}
+
+  body{
+    font-family:'Vazirmatn',Tahoma,Arial,sans-serif;
+    color:var(--text);
+    min-height:100vh;
+  }
+
+  body::before{
+    content:"";
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(to right, rgba(232,221,210,0.55) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(232,221,210,0.55) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image: radial-gradient(circle at 50% 30%, black 0%, transparent 72%);
+  }
+
+  .wrap{
+    position:relative; z-index:1;
+    max-width:1500px;
+    margin:0 auto;
+    padding:40px 24px 70px;
+  }
+
+  .page-head{ text-align:center; margin-bottom:30px; }
+  .page-eyebrow{
+    font-size:12.5px; font-weight:600; letter-spacing:.16em;
+    color:var(--secondary); text-transform:uppercase;
+    margin:0 0 10px;
+  }
+  .page-title{ font-size:27px; font-weight:800; margin:0 0 8px; color:var(--text); }
+  .page-sub{ font-size:14px; color:var(--muted); margin:0; font-weight:500; }
+  .page-sub .sd{ color:var(--data); font-weight:700; }
+  .page-sub .sc{ color:var(--command); font-weight:700; }
+
+  .stage-outer{ position:relative; width:100%; margin-top:34px; }
+
+  .stage{
+    position:relative;
+    width:1400px;
+    height:630px;
+    transform-origin: top right;
+  }
+
+  svg#lines{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    pointer-events:none;
+    overflow:visible;
+  }
+
+  .mk-data{ fill:var(--data); }
+  .mk-command{ fill:var(--command); }
+
+  .edge{ transition:opacity .28s ease; opacity:1; }
+  .edge.dim{ opacity:.1; }
+  .edge path{
+    fill:none;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    transition:stroke-width .28s ease, opacity .28s ease;
+  }
+  .edge.data path{ stroke:var(--data); stroke-width:3; }
+  .edge.command path{ stroke:var(--command); stroke-width:3; }
+  .edge.active path{ stroke-width:5.5; }
+
+  @keyframes flow-move{
+    from{ offset-distance:0%; }
+    to{ offset-distance:100%; }
+  }
+  .particle{
+    position:absolute;
+    top:0; left:0;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .22s ease;
+    offset-rotate:0deg;
+    z-index:15;
+    width:19px; height:16px; border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Courier New', 'Courier', monospace;
+    font-weight:800; font-size:10.5px; line-height:1;
+    color:#EAFAF6;
+  }
+  .particle.flowing{ opacity:1; }
+  .particle.data-packet{
+    background:linear-gradient(180deg, var(--data-dot), #2E625D);
+    border:1px solid rgba(234,250,246,.5);
+    box-shadow:0 0 7px 2px rgba(63,124,120,.55), inset 0 1px 1px rgba(255,255,255,.4);
+  }
+  .particle.command-packet{
+    color:#FBF3E4;
+    background:linear-gradient(180deg, var(--command-dot), #8A5A12);
+    border:1px solid rgba(251,243,228,.5);
+    box-shadow:0 0 7px 2px rgba(185,121,30,.5), inset 0 1px 1px rgba(255,255,255,.35);
+  }
+
+  .node{
+    position:absolute;
+    background:var(--paper);
+    border:2px solid var(--edge);
+    border-radius:16px;
+    padding:14px 16px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    gap:3px;
+    box-shadow:0 2px 10px rgba(70,63,58,.07);
+    transition:opacity .28s ease, transform .28s ease, box-shadow .28s ease, border-color .28s ease;
+    cursor:default;
+  }
+  .node-title{ font-weight:700; font-size:13.5px; line-height:1.4; color:var(--text); transition:color .28s ease;}
+  .node-sub{ font-weight:500; font-size:12.8px; color:var(--muted); line-height:1.55; }
+  .node-sub.small{ font-size:11px; }
+  .node-sub.mono{ direction:ltr; }
+
+  .icon-badge{
+    width:52px; height:52px; border-radius:14px;
+    background:var(--bg); border:1.5px solid var(--edge);
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:6px; color:var(--primary); flex:0 0 auto;
+    transition:color .28s ease, border-color .28s ease;
+  }
+  .node.active .icon-badge{ color:var(--primary); border-color:var(--primary); }
+  .icon-badge svg{
+    width:30px; height:30px; stroke:currentColor; fill:none;
+    stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;
+  }
+  .node.laptop .icon-badge{ align-self:center; }
+
+  .node.dim{ opacity:.1; }
+  .node.active{
+    opacity:1;
+    transform:scale(1.04);
+    border-color:var(--primary);
+    box-shadow:0 12px 30px rgba(70,63,58,.18), 0 0 0 3px rgba(125,157,156,.35);
+    z-index:30;
+  }
+  .node.active .node-title{ color:var(--primary); }
+
+  .node.laptop{ align-items:stretch; justify-content:flex-start; padding-top:16px; }
+  .pipeline{ display:flex; flex-direction:column; gap:0; margin-top:8px; }
+  .pl-step{ display:flex; align-items:center; gap:8px; padding:5px 0; position:relative; }
+  .pl-step:not(:last-child)::after{
+    content:""; position:absolute; right:11px; top:26px; width:2px; height:14px;
+    background:var(--edge);
+  }
+  .pl-num{
+    flex:0 0 auto; width:22px; height:22px; border-radius:50%;
+    background:var(--bg); border:2px solid var(--secondary);
+    color:var(--secondary); font-weight:800; font-size:11px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pl-label{ font-size:12px; font-weight:600; color:var(--text); text-align:right; }
+
+  .edge-label{
+    position:absolute;
+    font-size:12.5px;
+    font-weight:600;
+    line-height:1.55;
+    text-align:center;
+    pointer-events:none;
+    transition:opacity .28s ease;
+  }
+  .edge-label.data{ color:var(--data); }
+  .edge-label.command{ color:var(--command); }
+  .edge-label.dim{ opacity:.1; }
+
+  .legend{
+    margin-top:8px;
+    display:inline-flex;
+    gap:34px;
+    flex-wrap:wrap;
+    justify-content:center;
+    background:var(--paper);
+    border:2px solid var(--edge);
+    border-radius:16px;
+    padding:16px 26px;
+    box-shadow:0 2px 10px rgba(70,63,58,.06);
+  }
+  .legend-row{ display:flex; align-items:center; gap:10px; }
+  .legend-line{ width:44px; height:0; border-top:3px solid var(--data); }
+  .legend-line.command{ border-top-color:var(--command); }
+  .legend-text{ font-size:13px; font-weight:600; color:var(--text); }
+  .legend-wrap{ display:flex; justify-content:center; margin-top:26px; transition:opacity .28s ease; }
+
+  body.is-hovering .legend-wrap{ opacity:.35; }
+
+  @media (max-width:720px){
+    .page-title{ font-size:21px; }
+    .legend{ gap:18px; padding:14px 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="page-head">
+    <p class="page-eyebrow">نمودار بلوکی سیستم</p>
+    <h1 class="page-title">معماری سیستم حسگری و کنترلی اسکوتر خودران</h1>
+    <p class="page-sub">اشاره‌گر ماوس را روی هر بلوک نگه دارید: مسیر اتصال آن برجسته می‌شود و روی خطوط خروجی آن <span class="sd">بسته‌های داده</span> یا <span class="sc">فرمان حرکتی</span> جریان می‌یابد</p>
+  </div>
+
+  <div class="stage-outer" id="stageOuter">
+    <div class="stage" id="stage">
+
+      <svg id="lines" viewBox="0 0 1400 630">
+        <defs>
+          <marker id="m-data" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 Z" class="mk-data"></path>
+          </marker>
+          <marker id="m-command" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 Z" class="mk-command"></path>
+          </marker>
+        </defs>
+
+        <g class="edge data" data-id="e1" data-source="camera" data-target="raspi">
+          <path d="M300,100 L370,100 L370,150 L420,150" marker-end="url(#m-data)"></path>
+        </g>
+
+        <g class="edge data" data-id="e2" data-source="imu" data-target="raspi">
+          <path d="M300,250 L370,250 L370,210 L420,210" marker-end="url(#m-data)"></path>
+        </g>
+
+        <g class="edge data" data-id="e3" data-source="raspi" data-target="laptop">
+          <path d="M680,130 L740,130 L740,100 L800,100" marker-end="url(#m-data)"></path>
+        </g>
+
+        <g class="edge command" data-id="e4" data-source="laptop" data-target="raspi">
+          <path d="M800,170 L740,170 L740,190 L680,190" marker-end="url(#m-command)"></path>
+        </g>
+
+        <g class="edge data" data-id="e5" data-source="arduino" data-target="raspi">
+          <path d="M470,380 L470,260" marker-end="url(#m-data)"></path>
+        </g>
+
+        <g class="edge command" data-id="e6" data-source="raspi" data-target="arduino">
+          <path d="M630,260 L630,380" marker-end="url(#m-command)"></path>
+        </g>
+
+        <g class="edge data" data-id="e7" data-source="encoders" data-target="arduino">
+          <path d="M300,410 L360,410 L360,420 L420,420" marker-end="url(#m-data)"></path>
+        </g>
+
+        <g class="edge data" data-id="e8" data-source="ultrasonic" data-target="arduino">
+          <path d="M300,540 L360,540 L360,530 L420,530" marker-end="url(#m-data)"></path>
+        </g>
+
+        <g class="edge command" data-id="e9" data-source="arduino" data-target="motorDrivers">
+          <path d="M680,475 L800,475" marker-end="url(#m-command)"></path>
+        </g>
+
+        <g class="edge command" data-id="e10" data-source="motorDrivers" data-target="wheelMotors">
+          <path d="M1060,475 L1100,475" marker-end="url(#m-command)"></path>
+        </g>
+      </svg>
+
+      <div class="particle data-packet" data-edge="e1" data-dir="fwd" style="offset-path:path('M300,100 L370,100 L370,150 L420,150'); animation:flow-move 1.1s linear infinite;">1</div>
+      <div class="particle data-packet" data-edge="e1" data-dir="fwd" style="offset-path:path('M300,100 L370,100 L370,150 L420,150'); animation:flow-move 1.1s linear infinite; animation-delay:-.4s;">0</div>
+
+      <div class="particle data-packet" data-edge="e2" data-dir="fwd" style="offset-path:path('M300,250 L370,250 L370,210 L420,210'); animation:flow-move 1.1s linear infinite;">0</div>
+      <div class="particle data-packet" data-edge="e2" data-dir="fwd" style="offset-path:path('M300,250 L370,250 L370,210 L420,210'); animation:flow-move 1.1s linear infinite; animation-delay:-.4s;">1</div>
+
+      <div class="particle data-packet" data-edge="e3" data-dir="fwd" style="offset-path:path('M680,130 L740,130 L740,100 L800,100'); animation:flow-move 1.4s linear infinite;">1</div>
+      <div class="particle data-packet" data-edge="e3" data-dir="fwd" style="offset-path:path('M680,130 L740,130 L740,100 L800,100'); animation:flow-move 1.4s linear infinite; animation-delay:-.47s;">0</div>
+      <div class="particle data-packet" data-edge="e3" data-dir="fwd" style="offset-path:path('M680,130 L740,130 L740,100 L800,100'); animation:flow-move 1.4s linear infinite; animation-delay:-.94s;">1</div>
+
+      <div class="particle command-packet" data-edge="e4" data-dir="fwd" style="offset-path:path('M800,170 L740,170 L740,190 L680,190'); animation:flow-move 1.4s linear infinite;">0</div>
+      <div class="particle command-packet" data-edge="e4" data-dir="fwd" style="offset-path:path('M800,170 L740,170 L740,190 L680,190'); animation:flow-move 1.4s linear infinite; animation-delay:-.47s;">1</div>
+      <div class="particle command-packet" data-edge="e4" data-dir="fwd" style="offset-path:path('M800,170 L740,170 L740,190 L680,190'); animation:flow-move 1.4s linear infinite; animation-delay:-.94s;">0</div>
+
+      <div class="particle data-packet" data-edge="e5" data-dir="fwd" style="offset-path:path('M470,380 L470,260'); animation:flow-move .9s linear infinite;">1</div>
+      <div class="particle data-packet" data-edge="e5" data-dir="fwd" style="offset-path:path('M470,380 L470,260'); animation:flow-move .9s linear infinite; animation-delay:-.3s;">0</div>
+      <div class="particle data-packet" data-edge="e5" data-dir="fwd" style="offset-path:path('M470,380 L470,260'); animation:flow-move .9s linear infinite; animation-delay:-.6s;">1</div>
+
+      <div class="particle command-packet" data-edge="e6" data-dir="fwd" style="offset-path:path('M630,260 L630,380'); animation:flow-move .9s linear infinite;">0</div>
+      <div class="particle command-packet" data-edge="e6" data-dir="fwd" style="offset-path:path('M630,260 L630,380'); animation:flow-move .9s linear infinite; animation-delay:-.3s;">1</div>
+      <div class="particle command-packet" data-edge="e6" data-dir="fwd" style="offset-path:path('M630,260 L630,380'); animation:flow-move .9s linear infinite; animation-delay:-.6s;">0</div>
+
+      <div class="particle data-packet" data-edge="e7" data-dir="fwd" style="offset-path:path('M300,410 L360,410 L360,420 L420,420'); animation:flow-move 1s linear infinite;">1</div>
+      <div class="particle data-packet" data-edge="e7" data-dir="fwd" style="offset-path:path('M300,410 L360,410 L360,420 L420,420'); animation:flow-move 1s linear infinite; animation-delay:-.33s;">0</div>
+
+      <div class="particle data-packet" data-edge="e8" data-dir="fwd" style="offset-path:path('M300,540 L360,540 L360,530 L420,530'); animation:flow-move 1s linear infinite;">0</div>
+      <div class="particle data-packet" data-edge="e8" data-dir="fwd" style="offset-path:path('M300,540 L360,540 L360,530 L420,530'); animation:flow-move 1s linear infinite; animation-delay:-.33s;">1</div>
+
+      <div class="particle command-packet" data-edge="e9" data-dir="fwd" style="offset-path:path('M680,475 L800,475'); animation:flow-move .7s linear infinite;">1</div>
+      <div class="particle command-packet" data-edge="e9" data-dir="fwd" style="offset-path:path('M680,475 L800,475'); animation:flow-move .7s linear infinite; animation-delay:-.23s;">0</div>
+
+      <div class="particle command-packet" data-edge="e10" data-dir="fwd" style="offset-path:path('M1060,475 L1100,475'); animation:flow-move .5s linear infinite;">0</div>
+      <div class="particle command-packet" data-edge="e10" data-dir="fwd" style="offset-path:path('M1060,475 L1100,475'); animation:flow-move .5s linear infinite; animation-delay:-.16s;">1</div>
+
+      <div class="node" data-id="camera" style="left:40px; top:40px; width:260px; height:120px;">
+        <div class="icon-badge"><svg viewBox="0 0 44 44"><rect x="6" y="14" width="32" height="20" rx="4"></rect><circle cx="16" cy="24" r="5"></circle><circle cx="28" cy="24" r="5"></circle><rect x="16" y="9" width="6" height="6" rx="1"></rect></svg></div>
+        <div class="node-title">دوربین استریو</div>
+        <div class="node-sub mono">IMX219-83</div>
+      </div>
+
+      <div class="node" data-id="imu" style="left:40px; top:190px; width:260px; height:120px;">
+        <div class="icon-badge"><svg viewBox="0 0 44 44"><rect x="12" y="12" width="20" height="20" rx="3"></rect><path d="M22 12V4M22 4l-4 4M22 4l4 4"></path><path d="M32 22h8M40 22l-4-4M40 22l-4 4"></path><path d="M22 32v8M22 40l-4-4M22 40l4-4"></path></svg></div>
+        <div class="node-title">IMU</div>
+        <div class="node-sub mono">(TSS-USB-S v2.0)</div>
+      </div>
+
+      <div class="node" data-id="raspi" style="left:420px; top:90px; width:260px; height:170px;">
+        <div class="icon-badge"><svg viewBox="0 0 44 44"><rect x="6" y="8" width="32" height="28" rx="3"></rect><circle cx="12" cy="14" r="1.6" fill="currentColor" stroke="none"></circle><circle cx="12" cy="30" r="1.6" fill="currentColor" stroke="none"></circle><circle cx="32" cy="14" r="1.6" fill="currentColor" stroke="none"></circle><circle cx="32" cy="30" r="1.6" fill="currentColor" stroke="none"></circle><rect x="16" y="16" width="12" height="12" rx="1.5"></rect></svg></div>
+        <div class="node-title">رزبری پای 5</div>
+        <div class="node-sub">تجمیع داده و واسط ارتباطی</div>
+      </div>
+
+      <div class="node laptop" data-id="laptop" style="left:800px; top:30px; width:320px; height:260px;">
+        <div class="icon-badge"><svg viewBox="0 0 44 44"><rect x="8" y="10" width="28" height="18" rx="2"></rect><path d="M4 34h36l-3 -4H7z"></path></svg></div>
+        <div style="text-align:center; margin-bottom:2px;">
+          <div class="node-title">لپ‌تاپ</div>
+          <div class="node-sub small">(فقط در آزمون آزمایشگاهی)</div>
+        </div>
+        <div class="pipeline">
+          <div class="pl-step"><span class="pl-num">۱</span><span class="pl-label">پردازش داده‌ها</span></div>
+          <div class="pl-step"><span class="pl-num">۲</span><span class="pl-label">تشکیل مشاهده</span></div>
+          <div class="pl-step"><span class="pl-num">۳</span><span class="pl-label">عامل یادگیری تقویتی</span></div>
+          <div class="pl-step"><span class="pl-num">۴</span><span class="pl-label">تولید فرمان حرکتی</span></div>
+        </div>
+      </div>
+
+      <div class="node" data-id="encoders" style="left:40px; top:360px; width:260px; height:100px;">
+        <div class="icon-badge"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="14"></circle><circle cx="22" cy="22" r="3" fill="currentColor" stroke="none"></circle><path d="M22 8v4M22 30v4M8 22h4M30 22h4M12.5 12.5l2.8 2.8M28.7 28.7l2.8 2.8M31.5 12.5l-2.8 2.8M15.3 28.7l-2.8 2.8"></path></svg></div>
+        <div class="node-title">انکودرهای چرخ (×۴)</div>
+      </div>
+
+      <div class="node" data-id="ultrasonic" style="left:40px; top:490px; width:260px; height:100px;">
+        <div class="icon-badge"><svg viewBox="0 0 44 44"><rect x="8" y="16" width="28" height="12" rx="3"></rect><circle cx="16" cy="22" r="4"></circle><circle cx="28" cy="22" r="4"></circle><path d="M4 22c0-3 1-5 2-6M40 22c0-3 -1-5 -2-6" stroke-dasharray="1 3"></path></svg></div>
+        <div class="node-title">حسگرهای فراصوت (×۵)</div>
+      </div>
+
+      <div class="node" data-id="arduino" style="left:420px; top:380px; width:260px; height:190px;">
+        <div class="icon-badge"><svg viewBox="0 0 44 44"><rect x="6" y="10" width="32" height="24" rx="3"></rect><rect x="14" y="17" width="16" height="10" rx="1.5"></rect><path d="M10 10V6M16 10V6M28 10V6M34 10V6"></path><path d="M10 34v4M16 34v4M28 34v4M34 34v4"></path></svg></div>
+        <div class="node-title">آردوینو مگا</div>
+        <div class="node-sub">کنترل زمان‌واقعی موتور</div>
+      </div>
+
+      <div class="node" data-id="motorDrivers" style="left:800px; top:410px; width:260px; height:130px;">
+        <div class="icon-badge"><svg viewBox="0 0 44 44"><rect x="8" y="8" width="28" height="28" rx="3"></rect><path d="M16 22h5M23 22h5M20 17l3 5-3 5"></path></svg></div>
+        <div class="node-title">راه‌اندازهای موتور</div>
+        <div class="node-sub mono">(4 × ZS-X11H)</div>
+      </div>
+
+      <div class="node" data-id="wheelMotors" style="left:1100px; top:410px; width:260px; height:130px;">
+        <div class="icon-badge"><svg viewBox="0 0 44 44"><circle cx="22" cy="24" r="12"></circle><circle cx="22" cy="24" r="3" fill="currentColor" stroke="none"></circle><path d="M22 12v4M22 32v4M10 24h4M30 24h4M14 16l3 3M27 29l3 3M30 16l-3 3M17 29l-3 3"></path><path d="M8 36h28"></path></svg></div>
+        <div class="node-title">موتورهای چرخ /</div>
+        <div class="node-sub">سکوی اسکوتر</div>
+      </div>
+
+      <div class="edge-label data" data-id="e3" style="left:660px; top:56px; width:180px;">داده‌های تجمیع‌شده حسگرها<br><span style="font-weight:500; font-size:11.3px;">(LAN)</span></div>
+
+      <div class="edge-label command" data-id="e4" style="left:660px; top:200px; width:180px;">فرمان حرکت<br><span style="font-weight:500; font-size:11.3px;">(LAN)</span></div>
+
+      <div class="edge-label data" data-id="e5" style="left:345px; top:295px; width:130px;">داده انکودر و فراصوت<br><span style="font-weight:500; font-size:11.3px;">(USB)</span></div>
+
+      <div class="edge-label command" data-id="e6" style="left:555px; top:295px; width:130px;">فرمان حرکت<br><span style="font-weight:500; font-size:11.3px;">(USB)</span></div>
+
+      <div class="edge-label command" data-id="e9" style="left:695px; top:437px; width:110px;">سیگنال‌های کنترلی</div>
+
+    </div>
+  </div>
+
+  <div class="legend-wrap" id="legendWrap">
+    <div class="legend">
+      <div class="legend-row">
+        <span class="legend-line"></span>
+        <span class="legend-text">مسیر داده</span>
+      </div>
+      <div class="legend-row">
+        <span class="legend-line command"></span>
+        <span class="legend-text">مسیر فرمان</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var nodeEls    = Array.prototype.slice.call(document.querySelectorAll('.node'));
+  var edgeEls    = Array.prototype.slice.call(document.querySelectorAll('.edge'));
+  var labelEls   = Array.prototype.slice.call(document.querySelectorAll('.edge-label'));
+  var particleEls= Array.prototype.slice.call(document.querySelectorAll('.particle'));
+
+  var currentActive = null;
+
+  function clearAll(){
+    nodeEls.forEach(function(n){ n.classList.remove('active','dim'); });
+    edgeEls.forEach(function(e){ e.classList.remove('active','dim'); });
+    labelEls.forEach(function(l){ l.classList.remove('active','dim'); });
+    particleEls.forEach(function(p){ p.classList.remove('flowing'); });
+    document.body.classList.remove('is-hovering');
+    currentActive = null;
+  }
+
+  function activate(id){
+    currentActive = id;
+    var connected = {};
+    connected[id] = true;
+    var activeEdgeIds = {};
+
+    edgeEls.forEach(function(edge){
+      var src = edge.getAttribute('data-source');
+      var tgt = edge.getAttribute('data-target');
+      if(src === id || tgt === id){
+        connected[src] = true;
+        connected[tgt] = true;
+        activeEdgeIds[edge.getAttribute('data-id')] = true;
+      }
+    });
+
+    nodeEls.forEach(function(n){
+      var nid = n.getAttribute('data-id');
+      if(connected[nid]){
+        n.classList.add('active');
+        n.classList.remove('dim');
+      } else {
+        n.classList.remove('active');
+        n.classList.add('dim');
+      }
+    });
+
+    edgeEls.forEach(function(e){
+      var eid = e.getAttribute('data-id');
+      if(activeEdgeIds[eid]){
+        e.classList.add('active');
+        e.classList.remove('dim');
+      } else {
+        e.classList.remove('active');
+        e.classList.add('dim');
+      }
+    });
+
+    labelEls.forEach(function(l){
+      var lid = l.getAttribute('data-id');
+      if(activeEdgeIds[lid]){
+        l.classList.add('active');
+        l.classList.remove('dim');
+      } else {
+        l.classList.remove('active');
+        l.classList.add('dim');
+      }
+    });
+
+    particleEls.forEach(function(p){ p.classList.remove('flowing'); });
+    edgeEls.forEach(function(edge){
+      var eid = edge.getAttribute('data-id');
+      var src = edge.getAttribute('data-source');
+      if(src === id){
+        particleEls.forEach(function(p){
+          if(p.getAttribute('data-edge') === eid && p.getAttribute('data-dir') === 'fwd'){
+            p.classList.add('flowing');
+          }
+        });
+      }
+    });
+
+    document.body.classList.add('is-hovering');
+  }
+
+  nodeEls.forEach(function(n){
+    n.addEventListener('mouseenter', function(){ activate(n.getAttribute('data-id')); });
+    n.addEventListener('mouseleave', clearAll);
+
+    n.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      var id = n.getAttribute('data-id');
+      if(currentActive === id){
+        clearAll();
+      } else {
+        activate(id);
+      }
+    });
+  });
+
+  document.addEventListener('click', function(){ clearAll(); });
+
+  var stageOuter = document.getElementById('stageOuter');
+  var stage = document.getElementById('stage');
+
+  function fit(){
+    var w = stageOuter.clientWidth;
+    var scale = Math.min(1, w / 1400);
+    stage.style.transform = 'scale(' + scale + ')';
+    stageOuter.style.height = (630 * scale) + 'px';
+  }
+
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  fit();
+})();
+</script>
+
+</body>
+</html>

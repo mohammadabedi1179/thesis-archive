@@ -1,75 +1,115 @@
 # نقشه‌راه — Thesis Interactive Archive
 
-A tiny static "launcher" site: a menu on the side, and whichever interactive
-HTML file you pick loads in the main pane. No build step, no framework —
-just `index.html` + `style.css` + `app.js` + a `diagrams/` folder of your
-standalone HTML deliverables.
+A small static site with three levels of navigation, each with its own
+real URL:
 
-## Deploy it (GitHub Pages, ~2 minutes)
+```
+Home (/)                         → 6 chapter cards
+  → Chapter page (/chapters/ch5/) → tile grid, live thumbnail per document
+    → Document page (/view/apriltag-goal-cube/) → the file, full-screen
+```
 
-**Option A — brand new repo (recommended, simplest)**
+No build step, no framework. Every page is a plain `.html` file, so it
+works on any static host and every level is directly linkable/shareable.
 
-1. Create a new repo on GitHub, e.g. `thesis-archive`.
-2. Push everything in this folder to it:
-   ```bash
-   cd thesis-gallery
-   git init
-   git add .
-   git commit -m "Initial interactive archive"
-   git branch -M main
-   git remote add origin https://github.com/<your-username>/thesis-archive.git
-   git push -u origin main
-   ```
-3. On GitHub: **Settings → Pages → Build and deployment → Source: Deploy
-   from a branch → Branch: `main` / `(root)` → Save**.
-4. After a minute your link is live at:
-   `https://<your-username>.github.io/thesis-archive/`
+## Deploy it (GitHub Pages)
 
-**Option B — add it inside your existing thesis presentation repo**
+```bash
+cd thesis-gallery
+git init
+git add .
+git commit -m "Interactive thesis archive"
+git branch -M main
+git remote add origin https://github.com/<your-username>/<repo-name>.git
+git push -u origin main
+```
 
-Copy this whole folder in as a subdirectory, e.g. `your-repo/archive/`, push,
-and (if Pages is already enabled on that repo) it will be live at
-`https://<your-username>.github.io/<repo>/archive/` automatically — no
-extra Pages configuration needed for a subfolder.
+Then on GitHub: **Settings → Pages → Build and deployment → Source: Deploy
+from a branch → Branch: `main` / `(root)` → Save**. Live in a minute or two at
+`https://<your-username>.github.io/<repo-name>/`.
 
-## Add a new document later
+(Already have a repo for the thesis presentation? You can drop this whole
+folder in as a subdirectory instead — see the previous README version, same
+idea, no extra Pages config needed for a subfolder.)
 
-You said more files are coming — adding one takes two steps, no other file changes:
+## How it's organized
 
-1. Drop the exported `.html` file into `diagrams/`.
-2. Open `app.js` and add one object to the `ITEMS` array at the top, e.g.:
-   ```js
-   {
-     id: 'yuv-pipeline',
-     title: 'خط لولهٔ رمزگشایی YUV',
-     subtitle: 'یک جملهٔ کوتاه دربارهٔ محتوای این سند',
-     file: 'diagrams/yuv-pipeline.html',
-     category: 'بینایی سه‌بعدی و حسگرها',   // reuse a category to group with existing items,
-                                             // or give it a new category name to start a new group
-     lang: 'fa'   // 'fa' or 'en' — just controls the small language tag shown in the list
-   }
-   ```
-3. Commit and push. That's it.
+```
+index.html            home page (chapter cards)
+style.css              shared styles for every page
+data.js                 ← the registry: edit this to add/move/rename documents
+gallery.js              rendering logic (reads data.js, builds cards/tiles)
+generate.py              optional helper — regenerates chapters/*/view/* in bulk
 
-Each diagram file is loaded in an `<iframe>`, so it keeps its own layout,
-fonts, and scripts exactly as you built it — Persian/RTL files and
-English/LTR files (like the Plotly depth-accuracy tool) work side by side
-without conflicts.
+diagrams/                your exported .html files, untouched
+chapters/ch3/index.html  ↴
+chapters/ch4/index.html   } one small page per chapter, all driven by data.js
+chapters/ch5/index.html  ↳
+chapters/ch6/index.html
+chapters/appendix/index.html
+chapters/extra/index.html
 
-## What's included right now
+view/<id>/index.html     one tiny wrapper page per document — full-screen
+                          iframe of the real file + a "back to list" pill
+```
 
-| File | Category |
+## Add a new document
+
+Two steps, no other files to touch:
+
+**1. Drop the exported `.html` into `diagrams/`.**
+
+**2. Add one entry to the `ITEMS` array in `data.js`:**
+```js
+{ id: 'reward-curve', title: 'روند پاداش در آموزش',
+  subtitle: 'یک جملهٔ کوتاه دربارهٔ محتوای این سند',
+  file: 'reward-curve.html', chapter: 'ch6', lang: 'fa' }
+```
+`chapter` must be one of: `ch3`, `ch4`, `ch5`, `ch6`, `appendix`, `extra`.
+
+**3. Create its view page** — copy any existing `view/<id>/index.html`,
+paste it into a new `view/reward-curve/index.html`, and change the three
+things in it: the `<title>`, the `href="../../chapters/XX/"` (must match
+the `chapter` you set above), and the iframe `src="../../diagrams/XX.html"`.
+
+That's it — the chapter page picks it up automatically (no edits needed
+there), because it renders its tiles live from `data.js`.
+
+*(If you're adding several documents at once, it's faster to add all their
+entries to `ITEMS` in `data.js`, update the matching lists at the top of
+`generate.py`, and run `python3 generate.py` once — it regenerates every
+chapter and view page for you.)*
+
+## How chapters were assigned
+
+Based on matching each diagram's content against your actual `chapter3–6.tex`
+headings:
+
+| Chapter | Documents |
 |---|---|
-| مکعب برچسب‌های AprilTag (`apriltag-goal-cube.html`) | بینایی سه‌بعدی و حسگرها |
-| خط لوله دریافت تصویر استریو (`acquisition-pipeline-diagram.html`) | بینایی سه‌بعدی و حسگرها |
-| دقت نقشهٔ عمق (`depth-accuracy-interactive.html`) | بینایی سه‌بعدی و حسگرها |
+| فصل ۳ | *(none yet — theoretical RL/MDP framework, room for e.g. an algorithm-comparison diagram)* |
+| فصل ۴ — طراحی و شبیه‌سازی | ابرنقاط، حلقهٔ تعامل کنشگر و محیط، خط لولهٔ پردازش استریو، مقایسهٔ Skid-Steering، درخت TF |
+| فصل ۵ — پیاده‌سازی عملی | AprilTag، دریافت تصویر استریو، دقت عمق، مقایسهٔ Yaw، توان و الکترونیک، معماری حسگری-کنترلی، استخراج Y |
+| فصل ۶ | *(none yet — training/evaluation results)* |
+| پیوست‌ها / موارد اضافی | *(empty for now)* |
 
-## Notes
+Worth double-checking, especially **desk-quat-yaw** (IMU bench test — I put
+it under فصل ۵ as hardware validation, but it could arguably sit in فصل ۶ or
+موارد اضافی depending on how you frame it) and **stereo-vision-pipeline**
+vs **acquisition-pipeline** (both فصل ۵-adjacent; I split them as
+design/algorithm → فصل ۴ vs real hardware transfer → فصل ۵). Moving any item
+is a one-line edit to its `chapter` field in `data.js`.
 
-- Works with zero dependencies — any static host works (GitHub Pages,
-  Netlify, Vercel), not just GitHub.
-- On narrow screens the sidebar becomes a slide-in drawer, opened with the
-  menu button in the top-right.
-- The "برگهٔ جدید" button opens the currently viewed file directly, useful
-  if you want to share a link to one specific diagram instead of the whole
-  archive.
+## UI details
+
+- **Tile hover:** the hovered tile lifts and scales up while its neighbors
+  dim slightly — the "separates from the shelf" effect you asked for.
+- **Tile previews are live**, not static screenshots: each tile embeds the
+  real file at a fixed virtual size and shrinks it to fit, so what you see
+  is an accurate, always-up-to-date first frame of the actual document.
+- **Empty chapters** (فصل ۳، فصل ۶، پیوست‌ها، موارد اضافی right now) still
+  show up on the home page and have their own page with a friendly
+  "nothing here yet" state — nothing 404s.
+- Sidebar/menu-bar navigation from the previous version is gone — replaced
+  by real page-to-page navigation, so the browser back button, refresh, and
+  sharing a link to any single chapter or document all just work.
