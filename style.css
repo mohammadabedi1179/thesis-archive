@@ -1,0 +1,185 @@
+/* ══════════════════════════════════════════════════════════════
+   نقشه‌راه — shell for the thesis interactive archive
+   Palette matches the thesis design system (shared.css)
+   ══════════════════════════════════════════════════════════════ */
+
+:root{
+  --bg:      #FAF6F0;
+  --paper:   #FFFDF9;
+  --grid:    #EFE7DB;
+  --edge:    #D8CABD;
+  --text:    #463F3A;
+  --muted:   #6B625B;
+  --primary: #7D9D9C;  /* teal   */
+  --secondary:#C9A27E; /* amber  */
+  --active:  #C2703D;  /* terracotta — selected waypoint */
+  --shadow:  rgba(70,63,58,.14);
+  --sidebar-w: 302px;
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; margin:0; background:var(--bg); }
+body{
+  font-family:'Vazirmatn', Tahoma, Arial, sans-serif;
+  color:var(--text);
+  overflow:hidden;
+}
+button{ font:inherit; }
+svg{ display:block; }
+
+#app{ height:100vh; display:flex; flex-direction:column; }
+
+/* ── Top bar ─────────────────────────────────────────────────── */
+#topbar{
+  flex:0 0 auto; height:64px;
+  display:flex; align-items:center; gap:16px;
+  padding-inline:20px;
+  background:var(--paper);
+  border-bottom:1px solid var(--edge);
+  position:relative; z-index:30;
+}
+.icon-btn{
+  width:38px; height:38px; flex:0 0 auto;
+  border-radius:10px; border:1.5px solid var(--edge); background:transparent;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--text);
+  transition:background .15s ease;
+}
+.icon-btn:hover{ background:var(--grid); }
+.icon-btn svg{ width:19px; height:19px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; }
+
+.brand{ display:flex; align-items:center; gap:12px; flex:1; min-width:0; }
+.brand-mark{ width:46px; height:22px; flex:0 0 auto; overflow:visible; }
+.brand-mark path{ stroke:var(--edge); stroke-width:2; fill:none; }
+.brand-mark circle{ fill:var(--paper); stroke:var(--primary); stroke-width:2; }
+.brand-mark .mk-active{ fill:var(--active); stroke:var(--active); }
+.brand-mark .mk-dim{ fill:var(--edge); stroke:var(--edge); }
+.brand-text h1{ font-size:17px; font-weight:800; margin:0; line-height:1.2; }
+.brand-text p{ font-size:11px; font-weight:500; color:var(--muted); margin:2px 0 0; }
+
+.topbar-actions{ display:flex; gap:8px; flex:0 0 auto; }
+.ghost-btn{
+  display:flex; align-items:center; gap:6px;
+  border:1.5px solid var(--edge); border-radius:10px; background:transparent;
+  padding:7px 13px; font-size:12.5px; font-weight:600; color:var(--text);
+  cursor:pointer; transition:background .15s ease, opacity .15s ease;
+  white-space:nowrap;
+}
+.ghost-btn svg{ width:15px; height:15px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.ghost-btn:not(:disabled):hover{ background:var(--grid); }
+.ghost-btn:disabled{ opacity:.35; cursor:not-allowed; }
+
+/* ── Body row ────────────────────────────────────────────────── */
+#body-row{ flex:1; min-height:0; display:flex; position:relative; }
+
+#scrim{
+  display:none; position:absolute; inset:0; z-index:20;
+  background:rgba(70,63,58,.28);
+}
+
+/* ── Sidebar / route rail ───────────────────────────────────── */
+#sidebar{
+  width:var(--sidebar-w); flex:0 0 var(--sidebar-w);
+  background:var(--paper);
+  border-inline-start:1px solid var(--edge);
+  display:flex; flex-direction:column; min-height:0;
+  z-index:25;
+}
+#waypoint-scroll{ flex:1; overflow-y:auto; padding-block:14px 6px; }
+
+.wp-group{ margin-bottom:4px; }
+.category-label{
+  font-size:11px; font-weight:700; letter-spacing:.03em;
+  color:var(--secondary); margin:14px 20px 6px 14px;
+}
+.wp-group:first-child .category-label{ margin-top:2px; }
+
+.waypoint-item{
+  width:100%; display:flex; align-items:flex-start; gap:10px;
+  background:transparent; border:none; cursor:pointer; text-align:start;
+  padding:9px 14px 9px 8px; color:var(--text);
+  border-radius:0 14px 14px 0;
+}
+html[dir="rtl"] .waypoint-item{ border-radius:14px 0 0 14px; }
+.waypoint-item:hover{ background:var(--grid); }
+.waypoint-item:focus-visible{ outline:2px solid var(--primary); outline-offset:-2px; background:var(--grid); }
+.waypoint-item.active{ background:rgba(194,112,61,.10); }
+
+.wp-rail{ position:relative; width:22px; flex:0 0 22px; align-self:stretch; display:flex; justify-content:center; }
+.wp-rail::before, .wp-rail::after{
+  content:""; position:absolute; left:50%; margin-left:-1px; width:2px;
+  background:repeating-linear-gradient(to bottom, var(--edge) 0 5px, transparent 5px 10px);
+}
+.wp-rail::before{ top:-9px; height:19px; }
+.wp-rail::after{ bottom:-9px; height:19px; }
+.wp-group .waypoint-item:first-child .wp-rail::before{ display:none; }
+.wp-group .waypoint-item:last-child .wp-rail::after{ display:none; }
+
+.wp-dot{
+  position:relative; z-index:1; margin-top:13px;
+  width:10px; height:10px; border-radius:50%;
+  background:var(--paper); border:2px solid var(--primary);
+  transition:background .15s ease, border-color .15s ease, transform .15s ease;
+  flex:0 0 auto;
+}
+.waypoint-item.active .wp-dot{ background:var(--active); border-color:var(--active); transform:scale(1.2); }
+
+.wp-body{ flex:1; min-width:0; padding-block:8px; }
+.wp-title{ font-size:13.5px; font-weight:700; line-height:1.4; }
+.waypoint-item.active .wp-title{ color:var(--active); }
+.wp-sub{ font-size:11.5px; color:var(--muted); margin-top:2px; line-height:1.5; }
+.wp-tags{ display:flex; gap:6px; margin-top:6px; }
+.wp-tag{
+  font-size:9.5px; font-weight:700; letter-spacing:.03em;
+  border:1px solid var(--edge); border-radius:5px; padding:1.5px 6px;
+  color:var(--muted);
+}
+
+.sidebar-foot{
+  flex:0 0 auto; padding:10px 20px; border-top:1px solid var(--edge);
+  font-size:11px; color:var(--muted); font-weight:600;
+}
+
+/* ── Viewer pane ─────────────────────────────────────────────── */
+#viewer-pane{ flex:1; min-width:0; position:relative; background:var(--bg); }
+#viewer{ position:absolute; inset:0; width:100%; height:100%; border:0; background:var(--paper); }
+
+#empty-state{
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center; gap:10px;
+  padding:24px;
+}
+.empty-route{ width:180px; height:auto; overflow:visible; margin-bottom:6px; }
+.empty-route path{ fill:none; stroke:var(--edge); stroke-width:2.2; }
+.empty-route circle{ fill:var(--paper); stroke:var(--primary); stroke-width:2.2; }
+.empty-route circle:first-of-type{ fill:var(--active); stroke:var(--active); }
+.empty-arrow{ fill:var(--primary); stroke:none; }
+#empty-state h2{ font-size:16px; font-weight:800; margin:0; }
+#empty-state p{ font-size:13px; color:var(--muted); max-width:340px; margin:0; line-height:1.7; }
+
+/* ── Responsive: collapse sidebar into a drawer ─────────────── */
+@media (max-width:880px){
+  #sidebar{
+    position:absolute; inset-inline-start:0; top:0; bottom:0;
+    transform:translateX(100%);
+    transition:transform .25s ease;
+    box-shadow:0 0 24px var(--shadow);
+  }
+  html[dir="rtl"] #sidebar{ transform:translateX(100%); }
+  html[dir="rtl"] #sidebar.open{ transform:translateX(0); }
+  #sidebar.open{ transform:translateX(0); }
+  #scrim.open{ display:block; }
+  .brand-text p{ display:none; }
+  .ghost-btn span{ display:none; }
+  .ghost-btn{ padding:8px; }
+}
+@media (max-width:560px){
+  #topbar{ padding-inline:12px; gap:10px; }
+  .brand-mark{ display:none; }
+}
+
+/* ── Motion & focus preferences ──────────────────────────────── */
+@media (prefers-reduced-motion:reduce){
+  #sidebar, .wp-dot{ transition:none !important; }
+}
+:focus-visible{ outline:2px solid var(--primary); outline-offset:2px; }

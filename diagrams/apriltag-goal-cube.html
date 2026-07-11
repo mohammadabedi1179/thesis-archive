@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مکعب برچسب‌های AprilTag برای رمزگذاری هدف</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#FAF6F0; --edge:#D8CABD; --text:#463F3A; --muted:#6B625B; --paper:#FFFDF9; --accent:#7D9D9C; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; overflow:hidden; background:var(--bg); }
+  body{ font-family:'Vazirmatn',Tahoma,Arial,sans-serif; color:var(--text); }
+  #scene{ position:fixed; inset:0; }
+  .hdr{
+    position:fixed; top:0; right:0; left:0; z-index:5; text-align:center;
+    padding:18px 20px 10px; pointer-events:none;
+  }
+  .hdr h1{ font-size:19px; font-weight:800; margin:0 0 4px; }
+  .hdr p{ font-size:12.5px; color:var(--muted); margin:0; font-weight:500; }
+
+  .legend{
+    position:fixed; top:90px; right:20px; z-index:5;
+    background:var(--paper); border:2px solid var(--edge); border-radius:14px;
+    padding:12px 16px; box-shadow:0 4px 16px rgba(70,63,58,.1);
+    font-size:12.5px; min-width:190px;
+  }
+  .legend .lt{ font-weight:800; font-size:12.5px; margin-bottom:8px; }
+  .legend .row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:3px 0; }
+  .legend .row span:first-child{ color:var(--muted); font-weight:600; }
+  .legend .row .dim{ font-size:10.5px; color:var(--muted); font-weight:500; display:block; }
+  .legend .row .id{ font-weight:800; color:var(--accent); font-family:monospace; direction:ltr; }
+  .legend .row{ align-items:flex-start; }
+  .legend .rl{ display:flex; flex-direction:column; }
+
+  .hint{
+    position:fixed; bottom:18px; right:0; left:0; z-index:5; text-align:center;
+    font-size:12px; color:var(--muted); font-weight:600; pointer-events:none;
+  }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div class="hdr">
+  <h1>مکعب برچسب‌های AprilTag برای رمزگذاری هدف</h1>
+  <p>نسبت ابعاد واقعی جعبه رعایت شده — فقط کف جعبه برچسب ندارد</p>
+</div>
+<div class="legend">
+  <div class="lt">نگاشت وجه‌ها</div>
+  <div class="row"><span class="rl">بالا<span class="dim">۳۰×۶۰ cm</span></span><span class="id">ID 4</span></div>
+  <div class="row"><span class="rl">جلو<span class="dim">۵۰×۶۰ cm</span></span><span class="id">ID 0</span></div>
+  <div class="row"><span class="rl">راست<span class="dim">۳۰×۵۰ cm</span></span><span class="id">ID 1</span></div>
+  <div class="row"><span class="rl">عقب<span class="dim">۵۰×۶۰ cm</span></span><span class="id">ID 2</span></div>
+  <div class="row"><span class="rl">چپ<span class="dim">۳۰×۵۰ cm</span></span><span class="id">ID 3</span></div>
+  <div class="row"><span class="rl">کف<span class="dim">بدون نشانگر</span></span><span class="id">—</span></div>
+</div>
+<div class="hint">با کشیدن ماوس بچرخانید &middot; با اسکرول زوم کنید &middot; با راست‌کلیک/دو انگشت جابه‌جا کنید</div>
+
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+  // ---- exact bit patterns extracted from the reference tag images (1=white,0=black), 8x8 incl. 1-cell border ----
+  var TAG0 = [[0,0,0,0,0,0,0,0],[0,0,0,1,0,0,0,0],[0,0,1,1,0,1,0,0],[0,0,0,0,1,0,1,0],[0,0,0,0,1,1,0,0],[0,1,0,1,1,1,0,0],[0,1,0,1,0,1,1,0],[0,0,0,0,0,0,0,0]];
+  var TAG1 = [[0,0,0,0,0,0,0,0],[0,1,0,0,1,0,0,0],[0,1,0,1,1,0,1,0],[0,0,0,0,1,1,0,0],[0,0,0,1,1,1,1,0],[0,1,1,1,0,1,0,0],[0,0,1,1,0,1,1,0],[0,0,0,0,0,0,0,0]];
+  var TAG2 = [[0,0,0,0,0,0,0,0],[0,0,1,1,1,0,0,0],[0,0,0,1,0,0,0,0],[0,1,0,0,1,0,0,0],[0,0,0,0,0,0,1,0],[0,0,1,0,0,1,0,0],[0,1,1,1,0,1,1,0],[0,0,0,0,0,0,0,0]];
+  var TAG3 = [[0,0,0,0,0,0,0,0],[0,0,0,0,1,1,0,0],[0,0,1,0,0,1,1,0],[0,1,0,0,1,0,1,0],[0,1,1,1,0,0,1,0],[0,1,1,1,0,0,0,0],[0,1,0,0,1,1,1,0],[0,0,0,0,0,0,0,0]];
+  var TAG4 = [[0,0,0,0,0,0,0,0],[0,0,1,0,0,0,1,0],[0,0,0,0,0,0,1,0],[0,0,1,0,1,0,0,0],[0,1,1,1,1,0,1,0],[0,0,0,1,1,1,1,0],[0,0,1,0,1,1,1,0],[0,0,0,0,0,0,0,0]];
+
+  // texW/texH follow the real face proportions, so the tag stays square (undistorted)
+  // and the extra space is left as margin, with a label band reserved at the bottom.
+  function makeTagTexture(bits,label,texW,texH){
+    var c=document.createElement('canvas'); c.width=texW; c.height=texH;
+    var ctx=c.getContext('2d');
+    ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,texW,texH);
+
+    var pad = Math.min(texW,texH)*0.05;
+    var tagSize = Math.min(texW,texH) - 2*pad;
+    var cell = tagSize/8;
+    var offX = (texW-tagSize)/2;
+    var offY = (texH-tagSize)/2;
+
+    for(var i=0;i<8;i++){
+      for(var j=0;j<8;j++){
+        ctx.fillStyle = bits[i][j]===1 ? '#ffffff' : '#15130f';
+        ctx.fillRect(offX+j*cell-0.5, offY+i*cell-0.5, cell+1, cell+1);
+      }
+    }
+    ctx.strokeStyle='#15130f'; ctx.lineWidth=Math.max(2,texW*0.004);
+    ctx.strokeRect(offX,offY,tagSize,tagSize);
+    return c;
+  }
+  // stretches the tag grid to fill the whole face edge-to-edge (rectangular cells) instead of
+  // keeping it square with a white margin -- used for the more elongated faces.
+  function makeTagTextureStretched(bits,label,texW,texH){
+    var c=document.createElement('canvas'); c.width=texW; c.height=texH;
+    var ctx=c.getContext('2d');
+    ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,texW,texH);
+
+    var pad = Math.min(texW,texH)*0.03;
+    var gw = texW - 2*pad;
+    var gh = texH - 2*pad;
+    var cellW = gw/8, cellH = gh/8;
+    var offX = pad, offY = pad;
+
+    for(var i=0;i<8;i++){
+      for(var j=0;j<8;j++){
+        ctx.fillStyle = bits[i][j]===1 ? '#ffffff' : '#15130f';
+        ctx.fillRect(offX+j*cellW-0.5, offY+i*cellH-0.5, cellW+1, cellH+1);
+      }
+    }
+    ctx.strokeStyle='#15130f'; ctx.lineWidth=Math.max(2,texW*0.006);
+    ctx.strokeRect(offX,offY,gw,gh);
+    return c;
+  }
+  function makeBlankTexture(label,texW,texH){
+    var c=document.createElement('canvas'); c.width=texW; c.height=texH;
+    var ctx=c.getContext('2d');
+    ctx.fillStyle='#FAF6F0'; ctx.fillRect(0,0,texW,texH);
+    var m1=texW*0.045, m2=texW*0.045;
+    ctx.strokeStyle='#D8CABD'; ctx.lineWidth=Math.max(6,texW*0.018);
+    ctx.strokeRect(m1,m1,texW-2*m1,texH-2*m1);
+    var m3=texW*0.12;
+    ctx.setLineDash([texW*0.03,texW*0.026]);
+    ctx.strokeStyle='#C9BBAA'; ctx.lineWidth=Math.max(2,texW*0.006);
+    ctx.strokeRect(m3,m3,texW-2*m3,texH-2*m3);
+    ctx.setLineDash([]);
+    ctx.fillStyle='#8a8175';
+    var fontPx = Math.max(16, Math.min(28, texH*0.09));
+    ctx.font='bold '+fontPx+'px Vazirmatn, Arial, sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText(label, texW/2, texH*0.94);
+    return c;
+  }
+
+  function tex(canvas){
+    var t = new THREE.CanvasTexture(canvas);
+    t.magFilter = THREE.LinearFilter;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.anisotropy = 4;
+    t.needsUpdate = true;
+    return t;
+  }
+
+  // real proportions: width(X)=60cm, height(Y)=50cm, depth(Z)=30cm -> scaled to scene units /10
+  var W=6, H=5, D=3;
+
+  var texFront = tex(makeTagTexture(TAG0,'ID 0', 512, Math.round(512*H/W)));  // 50x60 face
+  var texRight = tex(makeTagTextureStretched(TAG1,'ID 1', Math.round(512*D/H), 512)); // 30x50 face
+  var texBack  = tex(makeTagTexture(TAG2,'ID 2', 512, Math.round(512*H/W)));
+  var texLeft  = tex(makeTagTextureStretched(TAG3,'ID 3', Math.round(512*D/H), 512));
+  var texTop   = tex(makeTagTextureStretched(TAG4,'ID 4', 512, Math.round(512*D/W))); // 30x60 face
+  var texBottom= tex(makeBlankTexture('بدون نشانگر', 512, Math.round(512*D/W)));
+
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xFAF6F0);
+
+  var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+  camera.position.set(9.3, 7.8, 11.1);
+
+  var renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.getElementById('scene').appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+  var dl1 = new THREE.DirectionalLight(0xffffff, 0.55); dl1.position.set(8,10,7); scene.add(dl1);
+  var dl2 = new THREE.DirectionalLight(0xffffff, 0.25); dl2.position.set(-7,-4,-5); scene.add(dl2);
+
+  var geo = new THREE.BoxGeometry(W,H,D);
+  // BoxGeometry material order: +X(right), -X(left), +Y(top), -Y(bottom), +Z(front), -Z(back)
+  var mats = [
+    new THREE.MeshStandardMaterial({ map:texRight,  roughness:0.85, metalness:0.02 }),
+    new THREE.MeshStandardMaterial({ map:texLeft,   roughness:0.85, metalness:0.02 }),
+    new THREE.MeshStandardMaterial({ map:texTop,    roughness:0.85, metalness:0.02 }),
+    new THREE.MeshStandardMaterial({ map:texBottom, roughness:0.9,  metalness:0.0  }),
+    new THREE.MeshStandardMaterial({ map:texFront,  roughness:0.85, metalness:0.02 }),
+    new THREE.MeshStandardMaterial({ map:texBack,   roughness:0.85, metalness:0.02 })
+  ];
+  var box = new THREE.Mesh(geo, mats);
+  scene.add(box);
+
+  var edges = new THREE.EdgesGeometry(geo);
+  var line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color:0x2b241d, linewidth:2 }));
+  box.add(line);
+
+  // soft contact shadow via a simple dark radial-gradient disc under the box
+  var shadowCanvas = document.createElement('canvas'); shadowCanvas.width=256; shadowCanvas.height=256;
+  var sctx = shadowCanvas.getContext('2d');
+  var grad = sctx.createRadialGradient(128,128,10,128,128,128);
+  grad.addColorStop(0,'rgba(70,63,58,0.28)'); grad.addColorStop(1,'rgba(70,63,58,0)');
+  sctx.fillStyle=grad; sctx.fillRect(0,0,256,256);
+  var shadowMat = new THREE.MeshBasicMaterial({ map:new THREE.CanvasTexture(shadowCanvas), transparent:true, depthWrite:false });
+  var shadowSize = Math.max(W,D)*2.3;
+  var shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(shadowSize,shadowSize), shadowMat);
+  shadowMesh.rotation.x = -Math.PI/2;
+  shadowMesh.position.y = -H/2 - 0.01;
+  scene.add(shadowMesh);
+
+  var controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 5;
+  controls.maxDistance = 40;
+  controls.target.set(0,0,0);
+  controls.update();
+
+  function onResize(){
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+  window.addEventListener('resize', onResize);
+
+  function animate(){
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+</script>
+</body>
+</html>
