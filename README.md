@@ -9,11 +9,25 @@ push. That's it — no file to edit, nothing else to touch.
 chapters/ch5/your-new-file.html
 ```
 
+**For the tile preview image**, add an image with the exact same filename
+(just a different extension) right next to it:
+
+```
+chapters/ch5/your-new-file.html
+chapters/ch5/your-new-file.png     ← same name, this is the tile thumbnail
+```
+
+`.png`, `.jpg`/`.jpeg`, `.webp`, `.svg`, and `.gif` are all recognized — use
+whichever you already have. No image yet? The tile still shows up, just
+with a plain placeholder ("بدون تصویر پیش‌نمایش") instead of a broken image,
+so nothing looks broken while you're getting the screenshot ready.
+
 The site reads the actual contents of each `chapters/<id>/` folder at
 runtime (via the GitHub API) and builds the tile automatically:
 
 - **Title** — taken from the file's own `<title>` tag.
 - **Language badge (فارسی/EN)** — detected from `<html lang="...">`.
+- **Preview image** — the same-name image sitting beside it, as above.
 - **Subtitle (optional)** — if you want one, add this one line inside
   your file's `<head>`, otherwise the tile just omits it:
   ```html
@@ -125,8 +139,9 @@ folder — no data to edit anywhere.
   forward while its two neighbors slide apart to make room; the rest of
   the row dims. Clicking animates the tile growing to fill the screen,
   then navigates to that file's own URL.
-- **Tile previews are live**, not static screenshots — each one embeds the
-  real file and crops/scales it to fit.
+- **Tile previews are static images** (the same-name file next to each
+  `.html`) — fast to load and consistent, since nothing needs to render
+  live to produce a thumbnail.
 - Chapters with more documents than fit on screen scroll horizontally.
 - **No back button on the document pages** — since documents are your
   original files opened at their own URL, nothing is injected into them.

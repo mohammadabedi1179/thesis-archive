@@ -4,8 +4,6 @@
    automatically via the GitHub Contents API — no manual registry.
    ══════════════════════════════════════════════════════════════ */
 
-const VIRTUAL_W = 1280, VIRTUAL_H = 800;
-
 function toFa(n){
   const map = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
   return String(n).replace(/\d/g, d => map[d]);
@@ -26,6 +24,8 @@ function detectRepo(){
 }
 
 /* ── GitHub API ──────────────────────────────────────────────── */
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'];
+
 async function listChapterFiles(chapterId){
   const repo = detectRepo();
   if (!repo) throw new Error('NO_REPO');
@@ -40,9 +40,20 @@ async function listChapterFiles(chapterId){
   }
 
   const entries = await res.json();
+
+  const imageByBase = {};
+  entries.forEach(e => {
+    if (e.type !== 'file') return;
+    const m = e.name.match(/^(.+)\.([a-zA-Z0-9]+)$/);
+    if (m && IMAGE_EXTS.includes(m[2].toLowerCase())) imageByBase[m[1]] = e.name;
+  });
+
   return entries
     .filter(e => e.type === 'file' && /\.html?$/i.test(e.name) && e.name.toLowerCase() !== 'index.html')
-    .map(e => ({ name: e.name, downloadUrl: e.download_url }))
+    .map(e => {
+      const base = e.name.replace(/\.html?$/i, '');
+      return { name: e.name, downloadUrl: e.download_url, image: imageByBase[base] || null };
+    })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -72,6 +83,7 @@ async function fetchFileMeta(fileEntry){
   return {
     id: fileEntry.name.replace(/\.html?$/i, ''),
     file: fileEntry.name,
+    image: fileEntry.image,
     title, subtitle, lang
   };
 }
@@ -168,7 +180,12 @@ async function renderChapter(chapterId){
                href="${it.file}" tabindex="0">
               <div class="tile3d-front">
                 <div class="tile3d-preview">
-                  <iframe class="tile3d-frame" src="${it.file}" tabindex="-1" aria-hidden="true"></iframe>
+                  ${it.image
+                    ? `<img class="tile3d-img" src="${it.image}" alt="" loading="lazy">`
+                    : `<div class="tile3d-placeholder">
+                         <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z M4 15l4.5-4.5 3 3L17 8l3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                         <span>بدون تصویر پیش‌نمایش</span>
+                       </div>`}
                 </div>
                 <div class="tile3d-info">
                   <span class="tile3d-title">${it.title}</span>
@@ -185,27 +202,7 @@ async function renderChapter(chapterId){
   wireShelf(items);
 }
 
-function scalePreviews(){
-  document.querySelectorAll('.tile3d-preview').forEach(face => {
-    const frame = face.querySelector('.tile3d-frame');
-    const apply = () => {
-      const fw = face.clientWidth, fh = face.clientHeight;
-      if (!fw || !fh) return;
-      const scale = Math.max(fw / VIRTUAL_W, fh / VIRTUAL_H);
-      const sw = VIRTUAL_W * scale, sh = VIRTUAL_H * scale;
-      frame.style.width = VIRTUAL_W + 'px';
-      frame.style.height = VIRTUAL_H + 'px';
-      frame.style.transform = `translate(${(fw - sw) / 2}px, ${(fh - sh) / 2}px) scale(${scale})`;
-    };
-    apply();
-    if ('ResizeObserver' in window) new ResizeObserver(apply).observe(face);
-    else window.addEventListener('resize', apply);
-  });
-}
-
 function wireShelf(items){
-  scalePreviews();
-
   const shelf = document.getElementById('shelf');
   const tiles = Array.from(shelf.querySelectorAll('.tile3d'));
 
