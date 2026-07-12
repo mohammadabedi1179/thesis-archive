@@ -98,7 +98,7 @@ async function renderHome(){
   const grid = document.getElementById('chapter-grid');
   if (!grid) return;
 
-  grid.innerHTML = CHAPTERS.map(ch => `
+  const chapterTiles = CHAPTERS.map(ch => `
     <a class="chapter-card is-loading" href="chapters/${ch.id}/" data-chapter="${ch.id}">
       <span class="chapter-tab">${ch.num}</span>
       <span class="chapter-card-title">${ch.title}</span>
@@ -106,6 +106,17 @@ async function renderHome(){
       <span class="chapter-card-count">در حال شمارش…</span>
     </a>`
   ).join('');
+
+  const extraTiles = EXTRA_TILES.map(tile => `
+    <a class="chapter-card is-extra" href="${tile.href}">
+      <span class="chapter-tab">${tile.num}</span>
+      <span class="chapter-card-title">${tile.title}</span>
+      <span class="chapter-card-blurb">${tile.blurb}</span>
+      <span class="chapter-card-count">مشاهدهٔ مستقیم</span>
+    </a>`
+  ).join('');
+
+  grid.innerHTML = chapterTiles + extraTiles;
 
   const results = await Promise.allSettled(CHAPTERS.map(ch => listChapterFiles(ch.id)));
 
