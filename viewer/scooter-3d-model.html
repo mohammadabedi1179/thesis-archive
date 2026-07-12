@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>مشاهده مدل سه‌بعدی</title>
+<title>مدل سه‌بعدی اسکوتر برقی خودران</title>
+<meta name="tile-subtitle" content="مشاهده تعاملی مدل — چرخش و بزرگ‌نمایی آزاد">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -92,21 +93,32 @@ import { GLTFLoader }  from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader }  from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// ── EDIT THESE TWO LINES FOR EACH NEW MODEL ─────────────────────────
-const MODEL_URL   = './models/Scooter-final-draco.glb';
-const MODEL_TITLE = 'مدل سه بعدی اسکوتر';
+// ── EDIT THIS LINE FOR EACH NEW MODEL ───────────────────────────────
+const MODEL_URL = './models/your-model.glb';
+// If the model looks upside-down or sideways, it's a Z-up (CAD) vs
+// Y-up (three.js) mismatch, not a bug — tune this rotation instead
+// of re-exporting. Start with -90° on X; if it's sideways instead,
+// try 90° on X, or swap to the Z axis.
+const MODEL_ROTATION = { x: -Math.PI / 2, y: 0, z: 0 };
+// The on-screen label and the gallery card title both come from the
+// <title> tag above — edit that one line, not this file's JS, when
+// you duplicate this page for a different model.
 // ─────────────────────────────────────────────────────────────────────
 
 const container  = document.getElementById('viewer');
 const loadingEl   = document.getElementById('loading');
 const loadingTxt  = document.getElementById('loading-text');
-document.getElementById('label-title').textContent = MODEL_TITLE;
+document.getElementById('label-title').textContent = document.title;
 
 const scene  = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.01, 1000);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({
+  antialias: window.devicePixelRatio <= 1, // MSAA is redundant once pixel-ratio supersamples anyway
+  alpha: true,
+  powerPreference: 'high-performance'
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 container.appendChild(renderer.domElement);
@@ -147,6 +159,8 @@ gltfLoader.load(
   MODEL_URL,
   (gltf) => {
     const model  = gltf.scene;
+    model.rotation.set(MODEL_ROTATION.x, MODEL_ROTATION.y, MODEL_ROTATION.z);
+
     const box    = new THREE.Box3().setFromObject(model);
     const center = box.getCenter(new THREE.Vector3());
     const size   = box.getSize(new THREE.Vector3());
