@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>مشاهده مدل سه‌بعدی</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #FAF6F0;
+    --grid:      #E8DDD2;
+    --text:      #463F3A;
+    --muted:     #6B625B;
+    --edge:      #D8CABD;
+    --primary:   #7D9D9C;
+    --secondary: #C9A27E;
+    --accent:    #B7A99A;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--bg);
+    font-family: Vazirmatn, Tahoma, Arial, sans-serif;
+    color: var(--text);
+  }
+  #viewer { position: fixed; inset: 0; }
+  #viewer canvas { display: block; touch-action: none; }
+
+  .soft-grid {
+    position: absolute; inset: 0; opacity: .5; pointer-events: none;
+    background-image:
+      linear-gradient(to right, rgba(232,221,210,.65) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(232,221,210,.65) 1px, transparent 1px);
+    background-size: 68px 68px;
+    mask-image: radial-gradient(circle at 50% 45%, black 0%, transparent 70%);
+  }
+
+  #label {
+    position: fixed; top: 28px; inset-inline-start: 32px;
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--primary); opacity: .8; z-index: 5;
+  }
+  #label b {
+    display: block; font-size: 19px; letter-spacing: 0;
+    text-transform: none; color: var(--text); margin-top: 4px; opacity: 1;
+  }
+
+  #hint {
+    position: fixed; bottom: 26px; inset-inline-start: 50%; transform: translateX(-50%);
+    font-size: 12.5px; color: var(--muted); letter-spacing: .03em; opacity: .75;
+    display: flex; gap: 22px; z-index: 5; white-space: nowrap;
+  }
+
+  #loading {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px; background: var(--bg); z-index: 10;
+    transition: opacity .5s ease;
+  }
+  #loading .ring {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 3px solid var(--edge); border-top-color: var(--primary);
+    animation: spin .9s linear infinite;
+  }
+  #loading p { margin: 0; font-size: 13px; color: var(--muted); letter-spacing: .04em; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+  <div class="soft-grid"></div>
+  <div id="label">Thesis Model<b id="label-title">عنوان مدل</b></div>
+  <div id="hint">
+    <span>چرخش: کلیک چپ و بکشید</span>
+    <span>بزرگ‌نمایی: اسکرول</span>
+    <span>جابه‌جایی: کلیک راست و بکشید</span>
+  </div>
+  <div id="viewer"></div>
+  <div id="loading"><div class="ring"></div><p id="loading-text">در حال بارگذاری مدل... ۰٪</p></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader }  from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader }  from 'three/addons/loaders/DRACOLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── EDIT THESE TWO LINES FOR EACH NEW MODEL ─────────────────────────
+const MODEL_URL   = './models/Scooter-final-draco.glb';
+const MODEL_TITLE = 'مدل سه بعدی اسکوتر';
+// ─────────────────────────────────────────────────────────────────────
+
+const container  = document.getElementById('viewer');
+const loadingEl   = document.getElementById('loading');
+const loadingTxt  = document.getElementById('loading-text');
+document.getElementById('label-title').textContent = MODEL_TITLE;
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.01, 1000);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+Object.assign(controls, {
+  enableDamping: true,
+  dampingFactor: 0.08,
+  rotateSpeed:   0.6,
+  zoomSpeed:     0.8,
+  panSpeed:      0.5,
+});
+controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+
+// Same warm three-point lighting rig as the thesis viewport
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8cabd, 2.8));
+const key  = new THREE.DirectionalLight(0xffffff, 3.2); key.position.set(4, 5, 6);   scene.add(key);
+const fill = new THREE.DirectionalLight(0xc9a27e, 1.2); fill.position.set(-4, 2, 3); scene.add(fill);
+const rim  = new THREE.DirectionalLight(0x7d9d9c, 1.6); rim.position.set(-2, 4, -5); scene.add(rim);
+
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(1, 64),
+  new THREE.MeshBasicMaterial({ color: 0x463f3a, transparent: true, opacity: 0.06, depthWrite: false })
+);
+ground.rotation.x = -Math.PI / 2;
+scene.add(ground);
+
+const gltfLoader  = new GLTFLoader();
+const dracoLoader = new DRACOLoader();
+// Google's hosted decoder — no need to add decoder files to your repo.
+// To self-host instead (matching your Vite project's /draco/ convention),
+// copy the three/examples/jsm/libs/draco/ folder into this repo and point
+// setDecoderPath('./draco/') at it.
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+gltfLoader.setDRACOLoader(dracoLoader);
+
+gltfLoader.load(
+  MODEL_URL,
+  (gltf) => {
+    const model  = gltf.scene;
+    const box    = new THREE.Box3().setFromObject(model);
+    const center = box.getCenter(new THREE.Vector3());
+    const size   = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+
+    model.position.sub(center);
+    scene.add(model);
+
+    // Auto-frame the camera so the whole model is visible on load
+    const fitDist = (maxDim / (2 * Math.tan((camera.fov * Math.PI / 180) / 2))) * 1.6;
+    camera.position.set(fitDist * 0.7, fitDist * 0.55, fitDist * 0.9);
+    camera.near = maxDim / 100;
+    camera.far  = maxDim * 100;
+    camera.updateProjectionMatrix();
+
+    controls.target.set(0, size.y * 0.05, 0);
+    controls.minDistance = maxDim * 0.3;
+    controls.maxDistance = maxDim * 4;
+    controls.update();
+
+    ground.position.y = box.min.y - center.y - 0.001;
+    ground.scale.setScalar(maxDim * 1.2);
+
+    loadingEl.classList.add('hidden');
+    setTimeout(() => { loadingEl.style.display = 'none'; }, 500);
+  },
+  (xhr) => {
+    if (xhr.total) loadingTxt.textContent = `در حال بارگذاری مدل... ${Math.round(xhr.loaded / xhr.total * 100)}٪`;
+  },
+  (err) => {
+    loadingTxt.textContent = 'خطا در بارگذاری مدل — مسیر فایل را بررسی کنید';
+    console.error('GLB load error:', err);
+  }
+);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+(function loop() {
+  requestAnimationFrame(loop);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>
