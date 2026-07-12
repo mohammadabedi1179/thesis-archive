@@ -178,22 +178,21 @@ body.has-texture::before{
 .empty-route circle:first-of-type{ fill:var(--active); stroke:var(--active); }
 .empty-chapter h2{ font-size:15px; font-weight:800; margin:0; }
 .empty-chapter p{ font-size:12.5px; color:var(--muted); margin:0; max-width:300px; line-height:1.7; }
+.error-chapter{ border-color:var(--active); }
+.error-chapter .empty-route circle{ stroke:var(--active); }
 
-/* ═══════════════════════════ VIEW PAGE ═════════════════════════ */
-body.view-body{ margin:0; height:100vh; overflow:hidden; background:#111; }
-.view-frame{ position:fixed; inset:0; width:100%; height:100%; border:0; background:var(--paper); }
-
-.back-pill{
-  position:fixed; top:14px; left:14px; z-index:1000;
-  display:flex; align-items:center; gap:6px;
-  background:rgba(24,21,18,.62); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-  color:#fff; padding:9px 15px 9px 11px; border-radius:999px;
-  font-size:12.5px; font-weight:700;
-  border:1px solid rgba(255,255,255,.18);
-  transition:background .15s ease, transform .15s ease;
+.loading-chapter{
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  padding:70px 20px; color:var(--muted); font-size:13px; font-weight:600;
 }
-.back-pill svg{ width:15px; height:15px; stroke:#fff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-.back-pill:hover{ background:rgba(24,21,18,.85); transform:translateX(-3px); }
+.spinner{
+  width:18px; height:18px; border-radius:50%;
+  border:2.5px solid var(--edge); border-top-color:var(--active);
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+.chapter-card.is-loading .chapter-card-count{ color:var(--faint); }
 
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width:640px){
@@ -212,5 +211,5 @@ body.view-body{ margin:0; height:100vh; overflow:hidden; background:#111; }
 
 /* ── Motion preferences ──────────────────────────────────────── */
 @media (prefers-reduced-motion:reduce){
-  .chapter-card, .tile3d, .icon-btn, .back-pill{ transition:none !important; }
+  .chapter-card, .tile3d, .icon-btn{ transition:none !important; }
 }

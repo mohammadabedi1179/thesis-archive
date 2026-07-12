@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>معماری LSTM-SAC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF6F0; --edge:#D8CABD; --text:#463F3A; --muted:#6B625B; --paper:#FFFDF9;
+    --blue:#4A6FA0; --green:#5F9E5A; --purple:#7A5FB0; --orange:#D08A3E; --red:#C2544A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);}
+  body{ font-family:'Vazirmatn',Tahoma,Arial,sans-serif; color:var(--text); min-height:100vh; }
+  body::before{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(to right, rgba(232,221,210,0.55) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(232,221,210,0.55) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image: radial-gradient(circle at 50% 25%, black 0%, transparent 72%);
+  }
+  .wrap{ position:relative; z-index:1; max-width:1620px; margin:0 auto; padding:36px 24px 60px; }
+  .page-head{ text-align:center; margin-bottom:20px; }
+  .eyebrow{ font-size:12.5px; font-weight:600; letter-spacing:.16em; color:var(--orange); text-transform:uppercase; margin:0 0 10px; }
+  h1{ font-size:25px; font-weight:800; margin:0 0 8px; }
+  .sub{ font-size:13px; color:var(--muted); margin:0; font-weight:500; }
+
+  .modebar{ display:flex; justify-content:center; align-items:center; gap:12px; margin:16px 0 6px; }
+  .modebar span{ font-size:12.5px; font-weight:700; color:var(--muted); }
+  .switch{ position:relative; width:52px; height:28px; background:var(--edge); border-radius:16px; cursor:pointer; transition:.2s; }
+  .switch.on{ background:var(--orange); }
+  .switch .knob{ position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:.2s; }
+  .switch.on .knob{ transform:translateX(24px); }
+  .modeLabel{ font-size:13px; font-weight:800; min-width:110px; text-align:center; }
+  .modeLabel.stoch{ color:var(--orange); } .modeLabel.det{ color:var(--blue); }
+
+  .stage-outer{ position:relative; width:100%; margin-top:10px; }
+  .stage{ position:relative; width:1580px; transform-origin:top right; direction:ltr; }
+  .row{ display:flex; align-items:stretch; gap:20px; }
+
+  .col{ background:var(--paper); border:2.5px solid; border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .col > .title{ direction:rtl; text-align:center; font-weight:800; font-size:14px; }
+  .sec{ direction:rtl; border:2px solid; border-radius:12px; padding:10px; }
+  .sec .stitle{ text-align:center; font-weight:800; font-size:12.5px; margin-bottom:8px; }
+  .box{ background:var(--bg); border:1.5px solid var(--edge); border-radius:8px; padding:6px 10px; text-align:center; font-size:12.5px; font-weight:700; font-family:'Times New Roman',serif; margin:6px 0; }
+  .arrowDown{ text-align:center; font-size:15px; color:var(--muted); margin:2px 0; }
+  .small{ font-size:10.5px; color:var(--muted); font-weight:600; text-align:center; }
+
+  /* ---- col1 input ---- */
+  .colInput{ width:190px; border-color:var(--blue); }
+  .inBox{ border-color:var(--green); } .inBox2{ border-color:var(--purple); margin-top:8px; }
+
+  /* ---- col2 feature extraction ---- */
+  .colFeat{ width:290px; border-color:var(--blue); }
+  .secFixed{ border-color:var(--green); }
+  .secObs{ border-color:var(--purple); }
+
+  .obsRow{ display:flex; gap:3px; justify-content:center; margin-bottom:8px; flex-wrap:wrap; }
+  .chip{ width:20px; height:20px; border-radius:4px; background:var(--purple); opacity:.25; transition:none; }
+  .lstmBox{ background:#EFE9F7; border:2px solid var(--purple); border-radius:10px; padding:8px; text-align:center; }
+  .lstmBox .t1{ font-weight:800; color:var(--purple); font-size:13px; }
+  .lstmBox .t2{ font-size:10.5px; color:var(--muted); font-weight:600; margin-top:3px; }
+  .hbar{ display:flex; gap:2px; justify-content:center; margin-top:8px; }
+  .hseg{ width:9px; height:16px; border-radius:2px; background:var(--purple); opacity:.15; }
+
+  @keyframes chipIn{ 0%,4%{opacity:.25; transform:translateY(0);} 8%,14%{opacity:1; transform:translateY(6px);} 20%{opacity:.25; transform:translateY(0);} 100%{opacity:.25;} }
+  @keyframes hsegLit{ 0%,4%{opacity:.15;} 10%,90%{opacity:1;} 96%,100%{opacity:.15;} }
+
+  /* ---- col3 concat ---- */
+  .colCat{ width:200px; border-color:var(--blue); justify-content:center; }
+  .catBars{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .barRow{ display:flex; gap:4px; align-items:center; }
+  .barSeg{ height:14px; border-radius:2px; }
+  .barGreen{ background:var(--green); width:70px; }
+  .barPurple{ background:var(--purple); width:70px; }
+  .catFinal{ display:flex; margin-top:10px; border-radius:4px; overflow:hidden; opacity:0; transition:none; }
+  .catFinal .g{ background:var(--green); width:22px; height:16px; }
+  .catFinal .p{ background:var(--purple); width:78px; height:16px; }
+  @keyframes catShow{ 0%,20%{opacity:0; transform:scale(.85);} 30%,90%{opacity:1; transform:scale(1);} 100%{opacity:0;} }
+
+  /* ---- col4 SAC core ---- */
+  .colSAC{ width:560px; border-color:var(--blue); }
+  .secActor{ border-color:var(--orange); }
+  .secCritics{ border-color:var(--red); margin-top:4px; }
+
+  .nn{ width:100%; height:80px; }
+  .nn circle{ fill:var(--paper); stroke:var(--orange); stroke-width:1.6; }
+  .nn.critic circle{ stroke:var(--red); }
+  .nn path{ stroke:var(--edge); stroke-width:1; fill:none; }
+  .pulseDot{ fill:var(--orange); opacity:0; }
+  .nn.critic .pulseDot{ fill:var(--red); }
+  @keyframes travelDot{ 0%,4%{offset-distance:0%; opacity:0;} 8%{opacity:1;} 46%{offset-distance:100%; opacity:1;} 50%{opacity:0;} 100%{opacity:0;} }
+
+  .bellWrap{ display:flex; align-items:center; gap:14px; margin-top:8px; }
+  .bellSvg{ width:150px; height:70px; flex:0 0 auto; }
+  .bellSvg path.curve{ fill:#FBE9CF; stroke:var(--orange); stroke-width:1.6; }
+  .sampleDot{ fill:var(--orange); stroke:#fff; stroke-width:1.5; transition:cx 1s cubic-bezier(.4,0,.2,1); }
+  .reparamText{ font-size:11.5px; font-weight:700; color:var(--muted); text-align:center; }
+
+  .criticsRow{ display:flex; gap:10px; }
+  .criticCol{ flex:1; text-align:center; }
+  .qval{ font-family:'Times New Roman',serif; font-weight:800; font-size:13px; border:2px solid var(--red); border-radius:8px; padding:5px; margin-top:6px; background:var(--bg); transition:box-shadow .3s ease, border-color .3s ease; }
+  .qval.min{ border-color:var(--green); box-shadow:0 0 0 3px rgba(95,158,90,.25); color:var(--green); }
+  .minRow{ text-align:center; margin-top:8px; }
+
+  /* ---- col5 action space ---- */
+  .colAct{ width:230px; border-color:var(--orange); align-items:center; justify-content:center; text-align:center; }
+  .avBox{ width:150px; height:150px; border:2px solid var(--blue); border-radius:8px; position:relative; background:var(--bg); margin:8px auto; }
+  .avBox::before, .avBox::after{ content:""; position:absolute; background:var(--edge); }
+  .avBox::before{ left:50%; top:0; bottom:0; width:1px; }
+  .avBox::after{ top:50%; left:0; right:0; height:1px; }
+  .avDot{ position:absolute; width:12px; height:12px; margin:-6px; border-radius:50%; background:var(--orange); border:2px solid #fff; box-shadow:0 0 0 2px var(--orange); transition:left 1s cubic-bezier(.4,0,.2,1), top 1s cubic-bezier(.4,0,.2,1); }
+  .avAxisLbl{ position:absolute; font-size:10.5px; font-weight:800; color:var(--muted); }
+  .avFormula{ font-family:'Times New Roman',serif; font-weight:800; font-size:13px; margin-top:6px; }
+
+  @media (max-width:900px){ h1{font-size:20px;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-head">
+    <p class="eyebrow">هسته سیاست</p>
+    <h1>معماری LSTM-SAC</h1>
+    <p class="sub">یک گام کامل پیش‌سو به‌صورت پیوسته اجرا می‌شود — از مشاهده خام تا کنش نهایی</p>
+  </div>
+
+  <div class="modebar">
+    <span class="modeLabel det">قطعی (ارزیابی)</span>
+    <div class="switch on" id="modeSwitch"><div class="knob"></div></div>
+    <span class="modeLabel stoch">تصادفی (آموزش)</span>
+  </div>
+
+  <div class="stage-outer" id="stageOuter">
+    <div class="stage" id="stage">
+      <div class="row">
+
+        <!-- COL 1: input -->
+        <div class="col colInput">
+          <div class="title" style="color:var(--blue)">ورودی مشاهده</div>
+          <div class="sec inBox">
+            <div class="stitle" style="color:var(--green)">بردار ثابت</div>
+            <div class="box">s<sub>t</sub><sup>fixed</sup> ∈ ℝ<sup>15</sup></div>
+          </div>
+          <div class="sec inBox2">
+            <div class="stitle" style="color:var(--purple)">ماتریس موانع</div>
+            <div class="box">O<sub>t</sub> ∈ ℝ<sup>10×5</sup></div>
+          </div>
+        </div>
+
+        <!-- COL 2: feature extraction -->
+        <div class="col colFeat">
+          <div class="title" style="color:var(--blue)">استخراج ویژگی</div>
+          <div class="sec secFixed">
+            <div class="stitle" style="color:var(--green)">مسیر مستقیم ویژگی‌های ثابت</div>
+            <div class="box">s<sub>t</sub><sup>fixed</sup> ∈ ℝ<sup>15</sup></div>
+          </div>
+          <div class="sec secObs">
+            <div class="stitle" style="color:var(--purple)">پردازش دنباله موانع</div>
+            <div class="obsRow" id="obsChips"></div>
+            <div class="lstmBox">
+              <div class="t1">LSTM</div>
+              <div class="t2">اندازه ورودی = ۵ &nbsp;|&nbsp; حالت پنهان = ۶۴ &nbsp;|&nbsp; لایه‌ها = ۱</div>
+              <div class="hbar" id="hbar"></div>
+            </div>
+            <div class="small" style="margin-top:6px;">h<sub>t</sub><sup>obs</sup> = H<sub>n</sub>[-1] ∈ ℝ<sup>64</sup></div>
+          </div>
+        </div>
+
+        <!-- COL 3: concat -->
+        <div class="col colCat">
+          <div class="title" style="color:var(--blue)">الحاق ویژگی‌ها</div>
+          <div class="catBars">
+            <div class="barRow"><div class="barSeg barGreen"></div><span class="small">۱۵</span></div>
+            <div class="barRow"><div class="barSeg barPurple" style="width:100px;"></div><span class="small">۶۴</span></div>
+            <div class="catFinal" id="catFinal"><div class="g"></div><div class="p" style="width:100px;"></div></div>
+          </div>
+          <div class="small" style="margin-top:10px; font-family:'Times New Roman',serif; font-size:13px; font-weight:800;">z<sub>t</sub> = [s<sub>t</sub><sup>fixed</sup> ‖ h<sub>t</sub><sup>obs</sup>]</div>
+          <div class="small">dim(z<sub>t</sub>) = 15+64 = 79</div>
+        </div>
+
+        <!-- COL 4: SAC core -->
+        <div class="col colSAC">
+          <div class="title" style="color:var(--blue)">هسته SAC</div>
+
+          <div class="sec secActor">
+            <div class="stitle" style="color:var(--orange)">کنشگر (Actor)</div>
+            <svg class="nn" id="nnActor" viewBox="0 0 500 80"></svg>
+            <div class="bellWrap">
+              <svg class="bellSvg" id="bellSvg" viewBox="0 0 150 70"></svg>
+              <div class="reparamText">μ , log σ → نمونه‌برداری مجدد →<br>a<sub>t</sub> = (v, w)</div>
+            </div>
+          </div>
+
+          <div class="sec secCritics">
+            <div class="stitle" style="color:var(--red)">دو منتقد مستقل (Twin Critics)</div>
+            <div class="criticsRow">
+              <div class="criticCol">
+                <svg class="nn critic" viewBox="0 0 220 70" id="nnC1"></svg>
+                <div class="small">ورودی (z<sub>t</sub>,a<sub>t</sub>)</div>
+                <div class="qval" id="q1">Q₁ = —</div>
+              </div>
+              <div class="criticCol">
+                <svg class="nn critic" viewBox="0 0 220 70" id="nnC2"></svg>
+                <div class="small">ورودی (z<sub>t</sub>,a<sub>t</sub>)</div>
+                <div class="qval" id="q2">Q₂ = —</div>
+              </div>
+            </div>
+            <div class="minRow small">min(Q₁,Q₂) → کاهش بیش‌برآورد Q</div>
+          </div>
+        </div>
+
+        <!-- COL 5: action space -->
+        <div class="col colAct">
+          <div class="title" style="color:var(--orange)">فضای عمل</div>
+          <div class="avBox">
+            <div class="avAxisLbl" style="top:4px; left:50%; transform:translateX(-50%);">w</div>
+            <div class="avAxisLbl" style="bottom:2px; right:6px;">v</div>
+            <div class="avDot" id="avDot" style="left:50%; top:50%;"></div>
+          </div>
+          <div class="avFormula">a<sub>t</sub> = (v, w)</div>
+          <div class="small">a<sub>t</sub> ∈ [−1,1]²</div>
+          <div class="small" style="margin-top:6px;">v: سرعت خطی نرمال‌شده</div>
+          <div class="small">w: سرعت زاویه‌ای نرمال‌شده</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var NS='http://www.w3.org/2000/svg';
+  function el(tag,attrs){ var e=document.createElementNS(NS,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+  // ---- obstacle chips + LSTM hidden-state bar ----
+  var obsChips = document.getElementById('obsChips');
+  for(var i=0;i<10;i++){
+    var c = document.createElement('div'); c.className='chip';
+    c.style.animation = 'chipIn 4.6s ease-in-out infinite';
+    c.style.animationDelay = (i*0.32)+'s';
+    obsChips.appendChild(c);
+  }
+  var hbar = document.getElementById('hbar');
+  for(var j=0;j<16;j++){
+    var h = document.createElement('div'); h.className='hseg';
+    h.style.animation = 'hsegLit 4.6s ease-in-out infinite';
+    h.style.animationDelay = (j*0.2)+'s';
+    hbar.appendChild(h);
+  }
+
+  document.getElementById('catFinal').style.animation = 'catShow 4.6s ease-in-out infinite';
+  document.getElementById('catFinal').style.animationDelay = '3.1s';
+
+  // ---- mini neural-net diagrams with traveling pulse dots ----
+  function buildNN(svgId, layers, opts){
+    var svg = document.getElementById(svgId);
+    var w = svg.viewBox.baseVal.width, h = svg.viewBox.baseVal.height;
+    var xs = [];
+    for(var l=0;l<layers.length;l++){ xs.push( (l+0.5) * (w/layers.length) ); }
+    var positions = [];
+    layers.forEach(function(n,l){
+      var col=[];
+      for(var i=0;i<n;i++){
+        var y = (h/(n+1))*(i+1);
+        col.push({x:xs[l], y:y});
+      }
+      positions.push(col);
+    });
+    // connections
+    var paths = [];
+    for(var l=0;l<positions.length-1;l++){
+      positions[l].forEach(function(p1){
+        positions[l+1].forEach(function(p2){
+          var d = 'M'+p1.x+','+p1.y+' L'+p2.x+','+p2.y;
+          var path = el('path',{d:d});
+          svg.appendChild(path);
+          paths.push({d:d, el:path});
+        });
+      });
+    }
+    positions.forEach(function(col){
+      col.forEach(function(p){ svg.appendChild(el('circle',{cx:p.x,cy:p.y,r:5})); });
+    });
+    // pulse dots riding a sample of connection paths
+    var sample = paths.filter(function(_,i){ return i % Math.max(1,Math.floor(paths.length/6)) === 0; }).slice(0,6);
+    sample.forEach(function(p, idx){
+      var dot = el('circle', {r:3.4, class:'pulseDot'});
+      dot.style.offsetPath = "path('"+p.d+"')";
+      dot.style.animation = 'travelDot 4.6s ease-in-out infinite';
+      dot.style.animationDelay = (idx*0.22)+'s';
+      svg.appendChild(dot);
+    });
+  }
+  buildNN('nnActor', [1,4,4,2]);
+  buildNN('nnC1', [2,3,1]);
+  buildNN('nnC2', [2,3,1]);
+
+  // ---- bell curve (mu, log-sigma) with sample marker ----
+  var bell = document.getElementById('bellSvg');
+  var curve = el('path', { class:'curve', d:'M6,60 C20,60 30,12 75,12 C120,12 130,60 144,60 Z' });
+  bell.appendChild(curve);
+  var axis = el('line', {x1:6,y1:60,x2:144,y2:60, stroke:'#C9BBAA', 'stroke-width':1});
+  bell.appendChild(axis);
+  var sampleDot = el('circle', {cx:75, cy:16, r:5, class:'sampleDot'});
+  bell.appendChild(sampleDot);
+
+  // ---- action-space dot + Q values ----
+  var avDot = document.getElementById('avDot');
+  var q1El = document.getElementById('q1'), q2El = document.getElementById('q2');
+
+  var stochastic = true;
+  function rnd(a,b){ return a+Math.random()*(b-a); }
+
+  function stepSample(){
+    var vx, vy;
+    if(stochastic){
+      vx = rnd(-0.75,0.75); vy = rnd(-0.75,0.75);
+    } else {
+      vx = 0; vy = 0; // deterministic: exactly at mu
+    }
+    // bell marker: map vx (-1..1) to x range of curve (12..138), keep near peak on the curve
+    var bx = 75 + vx*55;
+    sampleDot.setAttribute('cx', Math.max(10,Math.min(140,bx)));
+
+    // action dot position (percentage inside box, center=50%)
+    var leftPct = 50 + vx*45;
+    var topPct = 50 - vy*45;
+    avDot.style.left = leftPct+'%';
+    avDot.style.top = topPct+'%';
+
+    var q1 = rnd(0.3,1.4).toFixed(2);
+    var q2 = rnd(0.3,1.4).toFixed(2);
+    q1El.textContent = 'Q\u2081 = ' + q1;
+    q2El.textContent = 'Q\u2082 = ' + q2;
+    if(parseFloat(q1) <= parseFloat(q2)){ q1El.classList.add('min'); q2El.classList.remove('min'); }
+    else { q2El.classList.add('min'); q1El.classList.remove('min'); }
+  }
+  stepSample();
+  setInterval(stepSample, 4600);
+
+  var sw = document.getElementById('modeSwitch');
+  sw.addEventListener('click', function(){
+    stochastic = !stochastic;
+    sw.classList.toggle('on', stochastic);
+    stepSample();
+  });
+
+  // ---- responsive scale ----
+  var stageOuter=document.getElementById('stageOuter'), stage=document.getElementById('stage');
+  function fit(){
+    var w=stageOuter.clientWidth;
+    var scale=Math.min(1, w/1580);
+    stage.style.transform='scale('+scale+')';
+    var h = stage.getBoundingClientRect().height / (scale||1);
+    stageOuter.style.height=(h*scale)+'px';
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  setTimeout(fit, 50);
+  fit();
+})();
+</script>
+</body>
+</html>

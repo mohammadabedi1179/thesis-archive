@@ -1,16 +1,62 @@
 # نقشه‌راه — Thesis Interactive Archive
 
-A small static site with three levels of navigation, each with its own
-real URL:
+## Adding a document now takes one step
+
+Drop the exported `.html` file into the right `chapters/<id>/` folder and
+push. That's it — no file to edit, nothing else to touch.
 
 ```
-Home (/)                         → 6 chapter cards
-  → Chapter page (/chapters/ch5/) → tile grid, live thumbnail per document
-    → Document page (/view/apriltag-goal-cube/) → the file, full-screen
+chapters/ch5/your-new-file.html
 ```
 
-No build step, no framework. Every page is a plain `.html` file, so it
-works on any static host and every level is directly linkable/shareable.
+The site reads the actual contents of each `chapters/<id>/` folder at
+runtime (via the GitHub API) and builds the tile automatically:
+
+- **Title** — taken from the file's own `<title>` tag.
+- **Language badge (فارسی/EN)** — detected from `<html lang="...">`.
+- **Subtitle (optional)** — if you want one, add this one line inside
+  your file's `<head>`, otherwise the tile just omits it:
+  ```html
+  <meta name="tile-subtitle" content="یک جملهٔ کوتاه دربارهٔ این سند">
+  ```
+
+Delete a file from the folder and it disappears from the site on next
+load — nothing to clean up elsewhere either.
+
+## How this works (worth understanding before you deploy)
+
+Plain static hosting (GitHub Pages included) can't list "what files are in
+this folder" on its own — there's no server-side code running. So the site
+asks **GitHub's API** directly, from the visitor's browser, the moment a
+chapter page loads: *"what's inside chapters/ch5/ right now?"* GitHub
+answers with the live file list, and the page builds itself from that.
+
+This means:
+- **It only works once the site is actually live on GitHub Pages** (or any
+  URL where the repo owner/name can be determined — see below). Opening
+  `index.html` locally by double-clicking it won't show any documents,
+  since there's no GitHub URL to ask.
+- **It needs the repo to be public.** The GitHub API contents endpoint
+  used here only works unauthenticated for public repos.
+- **GitHub's API allows 60 requests/hour per visitor IP** (unauthenticated).
+  Loading the home page uses 6 of those (one per chapter, just to get
+  counts); opening a chapter page uses 1 more. For a thesis defense
+  audience this is very unlikely to be an issue — it would take heavy,
+  repeated navigating within the same hour from the same network to hit
+  it. If it ever does happen, visitors just see a friendly "try again in a
+  few minutes" message instead of a broken page.
+
+## Repo detection
+
+The site figures out your GitHub username/repo automatically from the page
+URL — nothing to configure for a normal GitHub Pages setup
+(`https://<user>.github.io/<repo>/`). The only time you'd need to touch
+anything is a **custom domain**, where that can't be inferred from the
+URL. In that case, open `data.js` and fill in:
+```js
+const REPO_OWNER = 'your-github-username';
+const REPO_NAME  = 'your-repo-name';
+```
 
 ## Deploy it (GitHub Pages)
 
@@ -25,60 +71,35 @@ git push -u origin main
 ```
 
 Then on GitHub: **Settings → Pages → Build and deployment → Source: Deploy
-from a branch → Branch: `main` / `(root)` → Save**. Live in a minute or two at
+from a branch → Branch: `main` / `(root)` → Save**. Also double check
+**Settings → General → the repo is Public** (required for the API calls
+above to work without authentication). Live in a minute or two at
 `https://<your-username>.github.io/<repo-name>/`.
-
-(Already have a repo for the thesis presentation? You can drop this whole
-folder in as a subdirectory instead — see the previous README version, same
-idea, no extra Pages config needed for a subfolder.)
 
 ## How it's organized
 
 ```
-index.html            home page (chapter cards)
-style.css              shared styles for every page
-data.js                 ← the registry: edit this to add/move/rename documents
-gallery.js              rendering logic (reads data.js, builds cards/tiles)
-generate.py              optional helper — regenerates chapters/*/view/* in bulk
+index.html        home page (chapter cards, counts fetched live)
+style.css           shared styles for every page
+data.js              the 6 fixed chapter sections + repo settings (rarely touched)
+gallery.js           discovery + rendering logic — the only "smart" part
+generate.py           optional — only needed if you add a whole new chapter/section
 
-diagrams/                your exported .html files, untouched
-chapters/ch3/index.html  ↴
-chapters/ch4/index.html   } one small page per chapter, all driven by data.js
-chapters/ch5/index.html  ↳
-chapters/ch6/index.html
-chapters/appendix/index.html
-chapters/extra/index.html
-
-view/<id>/index.html     one tiny wrapper page per document — full-screen
-                          iframe of the real file + a "back to list" pill
+chapters/
+  ch3/index.html                    (فصل ۳ — currently empty)
+  ch4/index.html
+  ch4/*.html                        ← your files, straight in the folder
+  ch5/index.html
+  ch5/*.html
+  ch6/index.html                    (currently empty)
+  appendix/index.html               (currently empty)
+  extra/index.html                  (currently empty)
 ```
 
-## Add a new document
-
-Two steps, no other files to touch:
-
-**1. Drop the exported `.html` into `diagrams/`.**
-
-**2. Add one entry to the `ITEMS` array in `data.js`:**
-```js
-{ id: 'reward-curve', title: 'روند پاداش در آموزش',
-  subtitle: 'یک جملهٔ کوتاه دربارهٔ محتوای این سند',
-  file: 'reward-curve.html', chapter: 'ch6', lang: 'fa' }
-```
-`chapter` must be one of: `ch3`, `ch4`, `ch5`, `ch6`, `appendix`, `extra`.
-
-**3. Create its view page** — copy any existing `view/<id>/index.html`,
-paste it into a new `view/reward-curve/index.html`, and change the three
-things in it: the `<title>`, the `href="../../chapters/XX/"` (must match
-the `chapter` you set above), and the iframe `src="../../diagrams/XX.html"`.
-
-That's it — the chapter page picks it up automatically (no edits needed
-there), because it renders its tiles live from `data.js`.
-
-*(If you're adding several documents at once, it's faster to add all their
-entries to `ITEMS` in `data.js`, update the matching lists at the top of
-`generate.py`, and run `python3 generate.py` once — it regenerates every
-chapter and view page for you.)*
+Adding a whole **new chapter/section** (not just a new document in an
+existing one) needs one edit: add it to the `CHAPTERS` array in `data.js`
+(for the home page card) and in `generate.py`, then run
+`python3 generate.py` once to stamp out that chapter's `index.html`.
 
 ## How chapters were assigned
 
@@ -87,37 +108,30 @@ headings:
 
 | Chapter | Documents |
 |---|---|
-| فصل ۳ | *(none yet — theoretical RL/MDP framework, room for e.g. an algorithm-comparison diagram)* |
+| فصل ۳ | *(none yet — theoretical RL/MDP framework)* |
 | فصل ۴ — طراحی و شبیه‌سازی | ابرنقاط، حلقهٔ تعامل کنشگر و محیط، خط لولهٔ پردازش استریو، مقایسهٔ Skid-Steering، درخت TF |
 | فصل ۵ — پیاده‌سازی عملی | AprilTag، دریافت تصویر استریو، دقت عمق، مقایسهٔ Yaw، توان و الکترونیک، معماری حسگری-کنترلی، استخراج Y |
-| فصل ۶ | *(none yet — training/evaluation results)* |
-| پیوست‌ها / موارد اضافی | *(empty for now)* |
+| فصل ۶ / پیوست‌ها / موارد اضافی | *(empty for now)* |
 
-Worth double-checking, especially **desk-quat-yaw** (IMU bench test — I put
-it under فصل ۵ as hardware validation, but it could arguably sit in فصل ۶ or
-موارد اضافی depending on how you frame it) and **stereo-vision-pipeline**
-vs **acquisition-pipeline** (both فصل ۵-adjacent; I split them as
-design/algorithm → فصل ۴ vs real hardware transfer → فصل ۵). Moving any item
-is a one-line edit to its `chapter` field in `data.js`.
+**desk-quat-yaw** and the **stereo-vision-pipeline** vs
+**acquisition-pipeline** split were judgment calls — worth double-checking.
+Moving a file between chapters now is just moving the file to a different
+folder — no data to edit anywhere.
 
 ## UI details
 
-- **Document tiles are a 3D perspective shelf**, not a flat grid: tiles stand
-  at an angle like books on a shelf. Hovering one turns it to face you and
-  lifts it forward while its two neighbors slide apart to make room; the
-  rest of the row dims. Clicking animates the tile growing to fill the
-  screen, then hands off to its real URL (`/view/<id>/`) — so the "coming
-  out of the shelf" effect leads straight into a normal, linkable page.
-- **Tile previews are live**, not static screenshots: each one embeds the
-  real file at a fixed virtual size and crops/scales it to fit (`object-fit:
-  cover` behavior), so what you see is an accurate, always-up-to-date first
-  frame of the actual document.
-- Chapters with more documents than fit on screen scroll horizontally —
-  the shelf, not the whole page.
-- **Empty chapters** (فصل ۳، فصل ۶، پیوست‌ها، موارد اضافی right now) still
-  show up on the home page and have their own page with a friendly
-  "nothing here yet" state — nothing 404s.
-- All navigation is real page-to-page navigation (plain links under the
-  hood), so the browser back button, refresh, and sharing a link to any
-  single chapter or document all just work — the shelf animation is a
-  transition layered on top, not a replacement for it.
+- **Document tiles are a 3D perspective shelf**: tiles stand at an angle
+  like books on a shelf. Hovering one turns it to face you and lifts it
+  forward while its two neighbors slide apart to make room; the rest of
+  the row dims. Clicking animates the tile growing to fill the screen,
+  then navigates to that file's own URL.
+- **Tile previews are live**, not static screenshots — each one embeds the
+  real file and crops/scales it to fit.
+- Chapters with more documents than fit on screen scroll horizontally.
+- **No back button on the document pages** — since documents are your
+  original files opened at their own URL, nothing is injected into them.
+  The browser's back button returns to the chapter shelf. Say the word if
+  you'd like an on-page "back to shelf" link added later.
+- File order within a chapter follows alphabetical filename order (that's
+  what GitHub's API returns them in). Prefix filenames with numbers
+  (`01-`, `02-`...) if you want to control the order later.

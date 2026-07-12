@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>شرایط تحقق هدف</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF6F0; --edge:#D8CABD; --text:#463F3A; --muted:#6B625B; --paper:#FFFDF9;
+    --ok:#5F9E5A; --bad:#C2544A; --net:#4A6FA0;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);}
+  body{ font-family:'Vazirmatn',Tahoma,Arial,sans-serif; color:var(--text); min-height:100vh; }
+  body::before{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(to right, rgba(232,221,210,0.55) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(232,221,210,0.55) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image: radial-gradient(circle at 50% 30%, black 0%, transparent 72%);
+  }
+  .wrap{ position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:36px 24px 50px; text-align:center; }
+  .eyebrow{ font-size:12.5px; font-weight:600; letter-spacing:.16em; color:var(--net); text-transform:uppercase; margin:0 0 10px; }
+  h1{ font-size:24px; font-weight:800; margin:0 0 8px; }
+  .sub{ font-size:13px; color:var(--muted); margin:0 0 18px; font-weight:500; }
+
+  .presets{ display:inline-flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; justify-content:center; }
+  .presets button{
+    font-family:'Vazirmatn',sans-serif; font-size:12.5px; font-weight:700; color:var(--text);
+    background:var(--paper); border:2px solid var(--edge); border-radius:10px; padding:8px 14px; cursor:pointer; transition:.15s;
+  }
+  .presets button:hover{ border-color:var(--net); color:var(--net); }
+  .presets button.reset{ color:var(--muted); }
+
+  .stageWrap{ position:relative; width:100%; margin:0 auto; background:var(--paper); border:2px solid var(--edge); border-radius:18px; padding:10px; box-shadow:0 2px 10px rgba(70,63,58,.06); }
+  svg#scene{ width:100%; height:auto; display:block; touch-action:none; }
+
+  .draggable{ cursor:grab; }
+  .draggable:active{ cursor:grabbing; }
+
+  .panel{ display:flex; justify-content:center; gap:14px; margin-top:18px; flex-wrap:wrap; }
+  .cond{ display:flex; align-items:center; gap:9px; background:var(--paper); border:2px solid var(--edge); border-radius:12px; padding:10px 16px; min-width:150px; transition:border-color .2s ease; }
+  .cond .badge{ width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:14px; color:#fff; flex:0 0 auto; transition:background .2s ease; }
+  .cond .badge.ok{ background:var(--ok); } .cond .badge.bad{ background:var(--bad); }
+  .cond .lbl{ text-align:right; }
+  .cond .t1{ font-size:12.5px; font-weight:800; }
+  .cond .t2{ font-size:10.5px; color:var(--muted); font-weight:600; }
+
+  .result{ margin-top:16px; display:inline-block; padding:12px 32px; border-radius:14px; font-size:16px; font-weight:800; border:2px solid; transition:.25s; }
+  .result.ok{ background:#EAF4E8; border-color:var(--ok); color:var(--ok); }
+  .result.bad{ background:#FBEAE8; border-color:var(--bad); color:var(--bad); }
+  .result.pop{ animation:pop .35s ease; }
+  @keyframes pop{ 0%{ transform:scale(.92); } 60%{ transform:scale(1.04); } 100%{ transform:scale(1); } }
+
+  .hint{ font-size:11.5px; color:var(--muted); font-weight:600; margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">شرط رسیدن به هدف</p>
+  <h1>شرایط تحقق هدف</h1>
+  <p class="sub">هدف (نماد قرمز) یا مانع (دایره خاکستری) را با ماوس بکشید و ببینید هر ۳ شرط چه زمانی هم‌زمان برقرار می‌شوند</p>
+
+  <div class="presets">
+    <button data-p="a">حالت الف — محقق شده</button>
+    <button data-p="b">حالت ب — فاصله زیاد</button>
+    <button data-p="c">حالت ج — زاویه نامناسب</button>
+    <button data-p="d">حالت د — مانع مسیر</button>
+    <button data-p="reset" class="reset">حذف مانع</button>
+  </div>
+
+  <div class="stageWrap">
+    <svg id="scene" viewBox="0 0 780 480"></svg>
+  </div>
+
+  <div class="panel">
+    <div class="cond" id="cond1"><span class="badge">✓</span><div class="lbl"><div class="t1">شرط ۱</div><div class="t2">فاصله ≤ شعاع موقعیت</div></div></div>
+    <div class="cond" id="cond2"><span class="badge">✓</span><div class="lbl"><div class="t1">شرط ۲</div><div class="t2">|زاویه هدف| &lt; π/۶</div></div></div>
+    <div class="cond" id="cond3"><span class="badge">✓</span><div class="lbl"><div class="t1">شرط ۳</div><div class="t2">مسیر بدون مانع (۰.۳ m)</div></div></div>
+  </div>
+
+  <div class="result ok" id="resultBox">هدف محقق شده</div>
+  <p class="hint">هر ۳ شرط باید هم‌زمان برقرار باشند</p>
+</div>
+
+<script>
+(function(){
+  var svg = document.getElementById('scene');
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs){ var e=document.createElementNS(NS,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+  var ROBOT = { x:130, y:260 };
+  var R = 190;              // position-radius threshold (illustrative units)
+  var HALF_ANGLE = Math.PI/6;
+  var CONE_LEN = 430;
+  var OBST_R = 42;          // ~0.3 m clearance zone
+
+  var target = { x:320, y:260 };
+  var obstacle = { x:420, y:360, visible:false };
+
+  // ---- static layer: cone ----
+  var coneP = el('path', { fill:'#DCEEDC', stroke:'#5F9E5A', 'stroke-width':2, 'stroke-dasharray':'6 5', opacity:.85 });
+  var x1 = ROBOT.x + CONE_LEN*Math.cos(-HALF_ANGLE), y1 = ROBOT.y + CONE_LEN*Math.sin(-HALF_ANGLE);
+  var x2 = ROBOT.x + CONE_LEN*Math.cos(HALF_ANGLE),  y2 = ROBOT.y + CONE_LEN*Math.sin(HALF_ANGLE);
+  coneP.setAttribute('d', 'M'+ROBOT.x+','+ROBOT.y+' L'+x1+','+y1+' A'+CONE_LEN+','+CONE_LEN+' 0 0 1 '+x2+','+y2+' Z');
+
+  // ---- dynamic layer elements ----
+  var radiusCircle = el('circle', { r:R, fill:'none', stroke:'#4A6FA0', 'stroke-width':2, 'stroke-dasharray':'5 5' });
+  var connector = el('line', { stroke:'#4A6FA0', 'stroke-width':3 });
+  var obstacleCircle = el('circle', { r:OBST_R, fill:'#9aa0a8', stroke:'#6b6f76', 'stroke-width':2, class:'draggable' });
+  var obstacleLabel = el('text', { 'text-anchor':'middle', 'font-size':11, 'font-weight':800, fill:'#463F3A' });
+  obstacleLabel.textContent = 'مانع (۰.۳ m)';
+
+  function robotGroup(){
+    var g = el('g', {});
+    g.appendChild(el('rect', {x:ROBOT.x-38,y:ROBOT.y-22,width:76,height:44,rx:8,fill:'#232323'}));
+    [[-30,-22],[30,-22],[-30,22],[30,22]].forEach(function(p){
+      g.appendChild(el('circle', {cx:ROBOT.x+p[0],cy:ROBOT.y+p[1],r:11,fill:'#2b2b2b',stroke:'#111','stroke-width':2}));
+    });
+    var arrow = el('path', { d:'M'+(ROBOT.x+10)+','+ROBOT.y+' L'+(ROBOT.x+70)+','+ROBOT.y, stroke:'#4A6FA0', 'stroke-width':3, 'marker-end':'url(#hd)' });
+    g.appendChild(arrow);
+    return g;
+  }
+  function targetGroup(){
+    var g = el('g', { class:'draggable', id:'targetHandle' });
+    g.appendChild(el('circle', { cx:0,cy:0,r:16, fill:'none', stroke:'#C2544A','stroke-width':3 }));
+    g.appendChild(el('circle', { cx:0,cy:0,r:9, fill:'none', stroke:'#C2544A','stroke-width':3 }));
+    g.appendChild(el('circle', { cx:0,cy:0,r:2.5, fill:'#C2544A' }));
+    return g;
+  }
+
+  var defs = el('defs', {});
+  var marker = el('marker', { id:'hd', viewBox:'0 0 10 10', refX:'8', refY:'5', markerWidth:'6', markerHeight:'6', orient:'auto-start-reverse' });
+  marker.appendChild(el('path', { d:'M0,0L10,5L0,10Z', fill:'#4A6FA0' }));
+  defs.appendChild(marker);
+
+  var targetG = targetGroup();
+
+  function build(){
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+    svg.appendChild(defs);
+    svg.appendChild(coneP);
+    svg.appendChild(radiusCircle);
+    svg.appendChild(connector);
+    svg.appendChild(robotGroup());
+    if(obstacle.visible){ svg.appendChild(obstacleCircle); svg.appendChild(obstacleLabel); }
+    svg.appendChild(targetG);
+    var lbl = el('text', {x:ROBOT.x, y:ROBOT.y-70, 'text-anchor':'middle','font-size':12,'font-weight':800, fill:'#5F9E5A'});
+    lbl.textContent = 'شعاع موقعیت';
+    svg.appendChild(lbl);
+  }
+
+  function pointSegDist(px,py, ax,ay, bx,by){
+    var dx=bx-ax, dy=by-ay;
+    var len2 = dx*dx+dy*dy;
+    var t = len2>0 ? ((px-ax)*dx+(py-ay)*dy)/len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    var cx = ax+t*dx, cy = ay+t*dy;
+    return { dist: Math.hypot(px-cx, py-cy), t:t };
+  }
+
+  function update(){
+    radiusCircle.setAttribute('cx', target.x); radiusCircle.setAttribute('cy', target.y);
+    targetG.setAttribute('transform', 'translate('+target.x+','+target.y+')');
+    connector.setAttribute('x1', ROBOT.x); connector.setAttribute('y1', ROBOT.y);
+    connector.setAttribute('x2', target.x); connector.setAttribute('y2', target.y);
+    obstacleCircle.setAttribute('cx', obstacle.x); obstacleCircle.setAttribute('cy', obstacle.y);
+    obstacleLabel.setAttribute('x', obstacle.x); obstacleLabel.setAttribute('y', obstacle.y+OBST_R+16);
+
+    var dx = target.x-ROBOT.x, dy = target.y-ROBOT.y;
+    var dist = Math.hypot(dx,dy);
+    var angle = Math.atan2(dy,dx);
+
+    var c1 = dist <= R;
+    var c2 = Math.abs(angle) < HALF_ANGLE;
+    var c3 = true;
+    if(obstacle.visible){
+      var pd = pointSegDist(obstacle.x,obstacle.y, ROBOT.x,ROBOT.y, target.x,target.y);
+      if(pd.dist < OBST_R && pd.t > 0.02 && pd.t < 0.98) c3 = false;
+    }
+    var all = c1 && c2 && c3;
+
+    connector.setAttribute('stroke', all ? '#5F9E5A' : '#4A6FA0');
+    setCond('cond1', c1);
+    setCond('cond2', c2);
+    setCond('cond3', c3);
+
+    var box = document.getElementById('resultBox');
+    var wasOk = box.classList.contains('ok');
+    box.className = 'result ' + (all?'ok':'bad');
+    box.textContent = all ? 'هدف محقق شده' : 'هدف محقق نشده';
+    if(wasOk !== all){ box.classList.add('pop'); setTimeout(function(){ box.classList.remove('pop'); }, 360); }
+  }
+  function setCond(id, ok){
+    var node = document.getElementById(id);
+    var badge = node.querySelector('.badge');
+    badge.textContent = ok ? '✓' : '✗';
+    badge.className = 'badge ' + (ok?'ok':'bad');
+    node.style.borderColor = ok ? '' : '#C2544A';
+  }
+
+  // ---- dragging ----
+  function svgPoint(ev){
+    var rect = svg.getBoundingClientRect();
+    var vb = svg.viewBox.baseVal;
+    var cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    var cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+    var x = (cx-rect.left)/rect.width*vb.width;
+    var y = (cy-rect.top)/rect.height*vb.height;
+    return {x:x,y:y};
+  }
+  function makeDraggable(node, obj){
+    var dragging=false;
+    function down(ev){ dragging=true; ev.preventDefault(); }
+    function move(ev){
+      if(!dragging) return;
+      var p = svgPoint(ev);
+      obj.x = Math.max(20, Math.min(760, p.x));
+      obj.y = Math.max(20, Math.min(460, p.y));
+      update();
+    }
+    function up(){ dragging=false; }
+    node.addEventListener('mousedown', down);
+    node.addEventListener('touchstart', down, {passive:false});
+    window.addEventListener('mousemove', move);
+    window.addEventListener('touchmove', move, {passive:false});
+    window.addEventListener('mouseup', up);
+    window.addEventListener('touchend', up);
+  }
+
+  build();
+  makeDraggable(targetG, target);
+  makeDraggable(obstacleCircle, obstacle);
+  update();
+
+  // ---- presets ----
+  var PRESETS = {
+    a: function(){ target.x=320; target.y=260; obstacle.visible=false; },
+    b: function(){ target.x=560; target.y=260; obstacle.visible=false; },
+    c: function(){ target.x=270; target.y=140; obstacle.visible=false; },
+    d: function(){ target.x=320; target.y=260; obstacle.x=225; obstacle.y=260; obstacle.visible=true; },
+    reset: function(){ obstacle.visible=false; }
+  };
+  Array.prototype.slice.call(document.querySelectorAll('.presets button')).forEach(function(btn){
+    btn.addEventListener('click', function(){
+      PRESETS[btn.getAttribute('data-p')]();
+      build(); makeDraggable(targetG, target); makeDraggable(obstacleCircle, obstacle); update();
+    });
+  });
+})();
+</script>
+</body>
+</html>

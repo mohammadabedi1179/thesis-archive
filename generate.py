@@ -1,53 +1,32 @@
 #!/usr/bin/env python3
 """
 نقشه‌راه — page generator
-Regenerates chapters/*/index.html and view/*/index.html from the lists
-below. These lists should be kept in sync with data.js (they're plain
-Python copies of the same registry, used only to stamp out boilerplate
-HTML — gallery.js is what actually renders content at runtime).
+Regenerates chapters/*/index.html from the list below. This should be
+kept in sync with data.js (it's a plain Python copy of the chapter list,
+used only to stamp out the boilerplate shell — gallery.js is what
+actually renders the tiles at runtime by reading data.js).
 
 Usage:
     python3 generate.py
 
-You do NOT need to run this for every new document — see README.md for
-the two-line manual alternative. Use this only if you'd rather
-regenerate everything in one go after editing the lists below.
+You will not normally need this: adding a new document is just "drop the
+file in the right chapters/<id>/ folder + add one entry to data.js" (see
+README.md). Only re-run this if you're adding a brand-new chapter/section
+(not just a new document inside an existing one).
 """
 import os
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
-CHAPTERS = ['ch3', 'ch4', 'ch5', 'ch6', 'appendix', 'extra']
-
-ITEMS = [
-    ('apriltag-goal-cube',        'مکعب برچسب‌های AprilTag',       'ch5'),
-    ('acquisition-pipeline',      'خط لوله دریافت تصویر استریو',   'ch5'),
-    ('depth-accuracy',            'دقت نقشهٔ عمق',                  'ch5'),
-    ('desk-quat-yaw',             'مقایسهٔ Yaw واحد اینرسی',        'ch5'),
-    ('power-system',              'معماری سیستم توان و الکترونیک', 'ch5'),
-    ('sensor-control-system',     'معماری حسگری و کنترلی',         'ch5'),
-    ('yuv-pipeline',              'استخراج صفحهٔ Y',                'ch5'),
-    ('point-cloud-pipeline',      'از تصویر استریو تا ابرنقاط',    'ch4'),
-    ('state-representation',      'حلقهٔ تعامل کنشگر و محیط',       'ch4'),
-    ('stereo-vision-pipeline',    'خط لولهٔ پردازش تصویر استریو',   'ch4'),
-    ('skid-steering-comparison',  'مقایسهٔ چرخش Skid-Steering',     'ch4'),
-    ('tf-tree-3d-view',           'نمای سه‌بعدی درخت TF',           'ch4'),
+# (chapter_id, <title> tag text)
+CHAPTERS = [
+    ('ch3',      'فصل ۳ — روش پژوهش و چهارچوب پیشنهادی'),
+    ('ch4',      'فصل ۴ — طراحی و شبیه‌سازی'),
+    ('ch5',      'فصل ۵ — پیاده‌سازی عملی، ساخت نمونه و آزمون‌های واقعی'),
+    ('ch6',      'فصل ۶ — ارزیابی و تحلیل نتایج'),
+    ('appendix', 'پیوست‌ها'),
+    ('extra',    'موارد اضافی'),
 ]
-
-FILE_FOR = {
-    'apriltag-goal-cube': 'apriltag-goal-cube.html',
-    'acquisition-pipeline': 'acquisition-pipeline-diagram.html',
-    'depth-accuracy': 'depth-accuracy-interactive.html',
-    'desk-quat-yaw': 'desk-quat-yaw-comparison.html',
-    'power-system': 'power-system-diagram.html',
-    'sensor-control-system': 'sensor-control-system-diagram.html',
-    'yuv-pipeline': 'yuv-pipeline-diagram.html',
-    'point-cloud-pipeline': 'point-cloud-pipeline-diagram.html',
-    'state-representation': 'state-representation-diagram.html',
-    'stereo-vision-pipeline': 'stereo-vision-pipeline-diagram.html',
-    'skid-steering-comparison': 'skid-steering-comparison.html',
-    'tf-tree-3d-view': 'tf-tree-3d-view.html',
-}
 
 CHAPTER_PAGE = """<!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -77,6 +56,11 @@ CHAPTER_PAGE = """<!DOCTYPE html>
   <main id="chapter-main">
     <p id="chapter-blurb"></p>
 
+    <div id="loading-chapter" class="loading-chapter">
+      <span class="spinner"></span>
+      <span>در حال بارگذاری اسناد…</span>
+    </div>
+
     <div id="tile-grid" class="tile-grid"></div>
 
     <div id="empty-chapter" class="empty-chapter">
@@ -87,6 +71,15 @@ CHAPTER_PAGE = """<!DOCTYPE html>
       <h2>هنوز سندی اضافه نشده</h2>
       <p>مستندات تعاملی این فصل به‌زودی اضافه می‌شوند.</p>
     </div>
+
+    <div id="error-chapter" class="empty-chapter error-chapter">
+      <svg viewBox="0 0 120 80" class="empty-route" aria-hidden="true">
+        <path d="M8 62 C 28 62, 28 34, 48 34 S 68 8, 88 8 S 108 8, 112 8" stroke-dasharray="4 6"/>
+        <circle cx="8" cy="62" r="4"/><circle cx="48" cy="34" r="3.2"/><circle cx="88" cy="8" r="3.2"/>
+      </svg>
+      <h2>فهرست اسناد بارگذاری نشد</h2>
+      <p></p>
+    </div>
   </main>
 
 <script src="../../data.js"></script>
@@ -95,35 +88,6 @@ CHAPTER_PAGE = """<!DOCTYPE html>
 </html>
 """
 
-VIEW_PAGE = """<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title} — نقشه‌راه</title>
-<link rel="stylesheet" href="../../style.css">
-</head>
-<body class="view-body">
-  <a class="back-pill" href="../../chapters/{chapter_id}/">
-    <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
-    <span>بازگشت به فهرست</span>
-  </a>
-  <iframe class="view-frame" src="../../diagrams/{file}" title="{title}"></iframe>
-</body>
-</html>
-"""
-
-# Chapter titles, kept here only for <title> tags (gallery.js supplies
-# the on-page heading/blurb from data.js at runtime).
-CHAPTER_TITLES = {
-    'ch3': 'فصل ۳ — روش پژوهش و چهارچوب پیشنهادی',
-    'ch4': 'فصل ۴ — طراحی و شبیه‌سازی',
-    'ch5': 'فصل ۵ — پیاده‌سازی عملی، ساخت نمونه و آزمون‌های واقعی',
-    'ch6': 'فصل ۶ — ارزیابی و تحلیل نتایج',
-    'appendix': 'پیوست‌ها',
-    'extra': 'موارد اضافی',
-}
-
 def write(path, content):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'w', encoding='utf-8') as f:
@@ -131,16 +95,10 @@ def write(path, content):
     print('wrote', os.path.relpath(path, ROOT))
 
 def main():
-    for ch in CHAPTERS:
+    for chapter_id, title in CHAPTERS:
         write(
-            os.path.join(ROOT, 'chapters', ch, 'index.html'),
-            CHAPTER_PAGE.format(title=CHAPTER_TITLES[ch], chapter_id=ch)
-        )
-
-    for item_id, title, chapter_id in ITEMS:
-        write(
-            os.path.join(ROOT, 'view', item_id, 'index.html'),
-            VIEW_PAGE.format(title=title, chapter_id=chapter_id, file=FILE_FOR[item_id])
+            os.path.join(ROOT, 'chapters', chapter_id, 'index.html'),
+            CHAPTER_PAGE.format(title=title, chapter_id=chapter_id)
         )
 
 if __name__ == '__main__':

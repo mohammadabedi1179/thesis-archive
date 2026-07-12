@@ -1,8 +1,8 @@
 /* ══════════════════════════════════════════════════════════════
-   نقشه‌راه — data registry
-   This is the ONLY file you need to edit to add a new document
-   once its .html export is sitting in /diagrams.
-   See README.md for the exact steps.
+   نقشه‌راه — site config
+   Documents are auto-discovered from each chapters/<id>/ folder at
+   runtime (via the GitHub API) — you don't list them here anymore.
+   This file only holds the fixed section list and repo settings.
    ══════════════════════════════════════════════════════════════ */
 
 const CHAPTERS = [
@@ -20,52 +20,11 @@ const CHAPTERS = [
     blurb: 'ابزارها و تحلیل‌های جانبی خارج از ساختار اصلی متن' }
 ];
 
-const ITEMS = [
-  { id: 'apriltag-goal-cube', title: 'مکعب برچسب‌های AprilTag',
-    subtitle: 'رمزگذاری هدف با برچسب‌های سه‌بعدی روی جعبه — نگاشت وجه به شناسه',
-    file: 'apriltag-goal-cube.html', chapter: 'ch5', lang: 'fa' },
-
-  { id: 'acquisition-pipeline', title: 'خط لوله دریافت تصویر استریو',
-    subtitle: 'از دوربین تا شبکه — مسیر داده تصویر خام دو دوربینه',
-    file: 'acquisition-pipeline-diagram.html', chapter: 'ch5', lang: 'fa' },
-
-  { id: 'depth-accuracy', title: 'دقت نقشهٔ عمق',
-    subtitle: 'تحلیل تعاملی خطای برآورد عمق استریو',
-    file: 'depth-accuracy-interactive.html', chapter: 'ch5', lang: 'en' },
-
-  { id: 'desk-quat-yaw', title: 'مقایسهٔ Yaw واحد اینرسی',
-    subtitle: 'آزمون رومیزی مقایسهٔ زاویهٔ هدینگ حسگر IMU',
-    file: 'desk-quat-yaw-comparison.html', chapter: 'ch5', lang: 'en' },
-
-  { id: 'power-system', title: 'معماری سیستم توان و الکترونیک',
-    subtitle: 'نقشهٔ کامل تغذیه، مبدل‌ها و اتصالات الکتریکی اسکوتر',
-    file: 'power-system-diagram.html', chapter: 'ch5', lang: 'fa' },
-
-  { id: 'sensor-control-system', title: 'معماری حسگری و کنترلی',
-    subtitle: 'نقشهٔ اتصال حسگرها، رزبری‌پای و آردوینو در سامانهٔ واقعی',
-    file: 'sensor-control-system-diagram.html', chapter: 'ch5', lang: 'fa' },
-
-  { id: 'yuv-pipeline', title: 'استخراج صفحهٔ Y',
-    subtitle: 'مرحلهٔ پردازش تصویر خام YUV دوربین استریو',
-    file: 'yuv-pipeline-diagram.html', chapter: 'ch5', lang: 'fa' },
-
-  { id: 'point-cloud-pipeline', title: 'از تصویر استریو تا ابرنقاط',
-    subtitle: 'زنجیرهٔ تولید ابرنقاط برای لایهٔ ادراک',
-    file: 'point-cloud-pipeline-diagram.html', chapter: 'ch4', lang: 'fa' },
-
-  { id: 'state-representation', title: 'حلقهٔ تعامل کنشگر و محیط',
-    subtitle: 'فضای حالت عامل یادگیری تقویتی — دوربین، فراصوت و IMU',
-    file: 'state-representation-diagram.html', chapter: 'ch4', lang: 'fa' },
-
-  { id: 'stereo-vision-pipeline', title: 'خط لولهٔ پردازش تصویر استریو',
-    subtitle: 'نقشهٔ اختلاف دید، تشخیص اشیا و تخمین سرعت با فیلتر کالمن',
-    file: 'stereo-vision-pipeline-diagram.html', chapter: 'ch4', lang: 'fa' },
-
-  { id: 'skid-steering-comparison', title: 'مقایسهٔ چرخش Skid-Steering',
-    subtitle: 'در برابر چرخش دیفرانسیلی ایده‌آل — مدل حرکتی ربات',
-    file: 'skid-steering-comparison.html', chapter: 'ch4', lang: 'fa' },
-
-  { id: 'tf-tree-3d-view', title: 'نمای سه‌بعدی درخت TF',
-    subtitle: 'چارچوب‌های مرجع چرخ‌ها و شاسی در مدل ربات',
-    file: 'tf-tree-3d-view.html', chapter: 'ch4', lang: 'fa' }
-];
+/* ── Repo settings ───────────────────────────────────────────
+   Leave both blank to auto-detect from the page URL (works out of
+   the box on a normal GitHub Pages URL: https://OWNER.github.io/REPO/).
+   Only fill these in if you're using a custom domain, where the
+   OWNER/REPO can't be read from the URL. */
+const REPO_OWNER = '';
+const REPO_NAME  = '';
+const REPO_BRANCH = 'main';

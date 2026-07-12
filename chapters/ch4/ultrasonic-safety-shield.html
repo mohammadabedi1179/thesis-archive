@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>سپر ایمنی فراصوتی</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF6F0; --edge:#D8CABD; --text:#463F3A; --muted:#6B625B; --paper:#FFFDF9;
+    --crit:#E5484D; --dang:#F2994A; --caut:#F2C14E;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);}
+  body{ font-family:'Vazirmatn',Tahoma,Arial,sans-serif; color:var(--text); min-height:100vh; }
+  body::before{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(to right, rgba(232,221,210,0.55) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(232,221,210,0.55) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image: radial-gradient(circle at 50% 35%, black 0%, transparent 72%);
+  }
+  .wrap{ position:relative; z-index:1; max-width:980px; margin:0 auto; padding:36px 24px 50px; text-align:center; }
+  .eyebrow{ font-size:12.5px; font-weight:600; letter-spacing:.16em; color:var(--crit); text-transform:uppercase; margin:0 0 10px; }
+  h1{ font-size:24px; font-weight:800; margin:0 0 8px; }
+  .sub{ font-size:13px; color:var(--muted); margin:0 0 20px; font-weight:500; }
+
+  .toggle{ display:inline-flex; gap:6px; background:var(--paper); border:2px solid var(--edge); border-radius:14px; padding:5px; margin-bottom:10px; }
+  .toggle button{
+    font-family:'Vazirmatn',sans-serif; font-size:13px; font-weight:700; color:var(--muted);
+    background:transparent; border:none; border-radius:10px; padding:9px 18px; cursor:pointer; transition:.2s;
+  }
+  .toggle button.on{ background:var(--text); color:#fff; }
+
+  .stageWrap{ position:relative; width:100%; max-width:900px; margin:14px auto 0; }
+  svg#scene{ width:100%; height:auto; display:block; }
+
+  .zone{ cursor:pointer; transition:opacity .2s ease, filter .2s ease; }
+  .zone.dim{ opacity:.25; }
+  .zone.hi{ filter:brightness(1.12); }
+  .zone.crit{ fill:var(--crit); } .zone.dang{ fill:var(--dang); } .zone.caut{ fill:var(--caut); }
+
+  .pulse{ fill:#fff; opacity:0; pointer-events:none; }
+  .pulseOn .p1{ animation:pulseGo 2.2s ease-in-out infinite; }
+  .pulseOn .p2{ animation:pulseGo 2.2s ease-in-out infinite; animation-delay:.35s; }
+  .pulseOn .p3{ animation:pulseGo 2.2s ease-in-out infinite; animation-delay:.7s; }
+  @keyframes pulseGo{ 0%,6%{opacity:0;} 12%,26%{opacity:.55;} 40%{opacity:0;} 100%{opacity:0;} }
+
+  .tip{
+    position:absolute; pointer-events:none; background:var(--text); color:#fff; font-size:12.5px; font-weight:700;
+    padding:8px 12px; border-radius:9px; box-shadow:0 6px 16px rgba(70,63,58,.25); opacity:0; transition:opacity .18s ease;
+    white-space:nowrap; transform:translate(-50%,-120%); z-index:10;
+  }
+  .tip.show{ opacity:1; }
+  .tip b{ display:block; font-size:12.5px; margin-bottom:2px; }
+  .tip span{ font-weight:500; font-size:11.5px; opacity:.85; }
+
+  .legend{ display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin-top:24px; background:var(--paper); border:2px solid var(--edge); border-radius:14px; padding:14px 20px; }
+  .lg{ display:flex; align-items:center; gap:9px; text-align:right; }
+  .lg .sw{ width:22px; height:22px; border-radius:6px; flex:0 0 auto; }
+  .lg .name{ font-size:13px; font-weight:800; }
+  .lg .rng{ font-size:11.5px; color:var(--muted); font-weight:600; }
+
+  .hint{ font-size:11.5px; color:var(--muted); font-weight:600; margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">حسگرهای فراصوت</p>
+  <h1>سپرهای ایمنی اسکوتر</h1>
+  <p class="sub">دو زیرسامانه مستقل: سپر بینایی (دوربین، برد بلند) و سپر فراصوت (پنج حسگر، برد نزدیک، دورتادور)</p>
+
+  <div class="toggle">
+    <button id="btnLong" class="on">سپر بینایی</button>
+    <button id="btnShort">سپر فراصوت</button>
+  </div>
+
+  <div class="stageWrap">
+    <svg id="scene" viewBox="0 0 900 700"></svg>
+    <div class="tip" id="tip"><b id="tipName"></b><span id="tipRange"></span></div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+  <p class="hint">دقت کنید برد سپر فراصوت به‌طور واقعی حدود یک‌سوم برد سپر بینایی است</p>
+</div>
+
+<script>
+(function(){
+  var svg = document.getElementById('scene');
+  var tip = document.getElementById('tip');
+  var tipName = document.getElementById('tipName');
+  var tipRange = document.getElementById('tipRange');
+  var legend = document.getElementById('legend');
+  var btnLong = document.getElementById('btnLong');
+  var btnShort = document.getElementById('btnShort');
+
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs){
+    var e = document.createElementNS(NS, tag);
+    for(var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function sectorPath(cx,cy,angleDeg,spreadDeg,r1,r2){
+    var a1=(angleDeg-spreadDeg/2)*Math.PI/180, a2=(angleDeg+spreadDeg/2)*Math.PI/180;
+    var x1o=cx+r2*Math.cos(a1), y1o=cy+r2*Math.sin(a1);
+    var x2o=cx+r2*Math.cos(a2), y2o=cy+r2*Math.sin(a2);
+    var large = spreadDeg>180?1:0;
+    if(r1<=0.6){
+      return 'M'+cx+','+cy+' L'+x1o+','+y1o+' A'+r2+','+r2+' 0 '+large+' 1 '+x2o+','+y2o+' Z';
+    }
+    var x1i=cx+r1*Math.cos(a1), y1i=cy+r1*Math.sin(a1);
+    var x2i=cx+r1*Math.cos(a2), y2i=cy+r1*Math.sin(a2);
+    return 'M'+x1i+','+y1i+' L'+x1o+','+y1o+' A'+r2+','+r2+' 0 '+large+' 1 '+x2o+','+y2o+
+           ' L'+x2i+','+y2i+' A'+r1+','+r1+' 0 '+large+' 0 '+x1i+','+y1i+' Z';
+  }
+
+  var SENSORS = {
+    front: { cx:520, cy:350, angle:0,   spread:100, name:'جلو' },
+    back:  { cx:280, cy:350, angle:180, spread:52,  name:'عقب' },
+    sideT: { cx:400, cy:262, angle:-90, spread:44,  name:'کناره (بالا)' },
+    sideB: { cx:400, cy:438, angle:90,  spread:44,  name:'کناره (پایین)' }
+  };
+
+  var SCALE = 140; // shared px-per-metre for BOTH subsystems, so their real range ratio (~3:1) reads correctly
+  var MODES = {
+    longRange: {
+      active: ['front'],
+      scale: SCALE,
+      zonesFront: [ ['crit','بحرانی',0,0.9], ['dang','خطرناک',0.9,1.5], ['caut','احتیاط',1.5,2.5] ],
+      zonesSide:  [],
+      zonesBack:  []
+    },
+    shortRange: {
+      active: ['front','back','sideT','sideB'],
+      scale: SCALE,
+      zonesFront: [ ['crit','بحرانی',0,0.25], ['dang','خطرناک',0.25,0.5], ['caut','احتیاط',0.5,0.8] ],
+      zonesSide:  [ ['crit','بحرانی',0,0.25], ['caut','احتیاط',0.25,0.5] ],
+      zonesBack:  [ ['crit','بحرانی',0,0.25] ]
+    }
+  };
+  var ZLABEL = { crit:'ناحیه بحرانی', dang:'ناحیه خطرناک', caut:'ناحیه احتیاط' };
+  var mode = 'longRange';
+
+  function drawRobot(){
+    var g = el('g', {});
+    g.appendChild(el('rect', {x:335,y:305,width:170,height:90,rx:10,fill:'#232323'}));
+    g.appendChild(el('line', {x1:420,y1:305,x2:420,y2:395,stroke:'#444',"stroke-width":2}));
+    g.appendChild(el('rect', {x:352,y:322,width:46,height:46,rx:4,fill:'none',stroke:'#3d3d3d',"stroke-width":3}));
+    g.appendChild(el('rect', {x:442,y:322,width:46,height:46,rx:4,fill:'none',stroke:'#3d3d3d',"stroke-width":3}));
+    [[352,305],[488,305],[352,395],[488,395]].forEach(function(p){
+      g.appendChild(el('circle', {cx:p[0],cy:p[1],r:20,fill:'#2b2b2b',stroke:'#111',"stroke-width":3}));
+      g.appendChild(el('circle', {cx:p[0],cy:p[1],r:7,fill:'#555'}));
+    });
+    g.appendChild(el('rect', {x:505,y:340,width:22,height:20,rx:3,fill:'#1a1a1a'}));
+    return g;
+  }
+
+  function render(){
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+    svg.appendChild(drawRobot());
+
+    var cfg = MODES[mode];
+    var zoneEls = [];
+
+    cfg.active.forEach(function(sid){
+      var s = SENSORS[sid];
+      var isFront = (sid === 'front');
+      var isBack = (sid === 'back');
+      var zones = isFront ? cfg.zonesFront : (isBack ? cfg.zonesBack : cfg.zonesSide);
+      var pulseGroup = el('g', { class:'pulseOn' });
+      var maxR = 0;
+
+      zones.forEach(function(z, idx){
+        var key=z[0], label=z[1], d0=z[2], d1=z[3];
+        var r1 = d0*cfg.scale, r2 = d1*cfg.scale;
+        maxR = Math.max(maxR, r2);
+        var path = el('path', {
+          d: sectorPath(s.cx,s.cy,s.angle,s.spread,r1,r2),
+          class: 'zone ' + key
+        });
+        path.setAttribute('data-name', s.name + ' — ' + ZLABEL[key]);
+        path.setAttribute('data-range', toFa(d0) + ' تا ' + toFa(d1) + ' متر');
+        svg.appendChild(path);
+        zoneEls.push(path);
+
+        path.addEventListener('mouseenter', function(ev){ showTip(ev, path); highlightAll(path,false); });
+        path.addEventListener('mousemove', function(ev){ positionTip(ev); });
+        path.addEventListener('mouseleave', function(){ hideTip(); highlightAll(null,true); });
+      });
+
+      // pulse sweep bands
+      for(var i=0;i<3;i++){
+        var rr = maxR*(0.25+i*0.28);
+        var pulseBand = el('path', {
+          d: sectorPath(s.cx,s.cy,s.angle,s.spread,Math.max(0,rr-6),rr+6),
+          class:'pulse p'+(i+1)
+        });
+        pulseGroup.appendChild(pulseBand);
+      }
+      svg.appendChild(pulseGroup);
+    });
+
+    renderLegend(cfg);
+  }
+
+  function highlightAll(activePath, reset){
+    var all = svg.querySelectorAll('.zone');
+    all.forEach(function(z){
+      if(reset){ z.classList.remove('dim','hi'); return; }
+      if(z === activePath){ z.classList.add('hi'); z.classList.remove('dim'); }
+      else { z.classList.add('dim'); z.classList.remove('hi'); }
+    });
+  }
+  function toFa(n){
+    var s = (Math.round(n*100)/100).toString();
+    var map={'0':'۰','1':'۱','2':'۲','3':'۳','4':'۴','5':'۵','6':'۶','7':'۷','8':'۸','9':'۹','.':'.'};
+    return s.replace(/[0-9.]/g, function(c){ return map[c]; });
+  }
+  function showTip(ev, path){
+    tipName.textContent = path.getAttribute('data-name');
+    tipRange.textContent = path.getAttribute('data-range');
+    tip.classList.add('show');
+    positionTip(ev);
+  }
+  function positionTip(ev){
+    var rect = svg.getBoundingClientRect();
+    var wrapRect = document.querySelector('.stageWrap').getBoundingClientRect();
+    var x = ev.clientX - wrapRect.left;
+    var y = ev.clientY - wrapRect.top;
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  }
+  function hideTip(){ tip.classList.remove('show'); }
+
+  function renderLegend(cfg){
+    legend.innerHTML = '';
+    var items = cfg.zonesFront;
+    items.forEach(function(z){
+      var key=z[0], d0=z[2], d1=z[3];
+      var row = document.createElement('div'); row.className='lg';
+      var sw = document.createElement('div'); sw.className='sw'; sw.style.background = getComputedStyle(document.documentElement).getPropertyValue('--'+key);
+      var txt = document.createElement('div');
+      var nm = document.createElement('div'); nm.className='name'; nm.textContent = ZLABEL[key];
+      var rg = document.createElement('div'); rg.className='rng';
+      var hasSide = cfg.zonesSide.length > 0;
+      rg.textContent = hasSide ? ('جلو: '+toFa(d0)+'–'+toFa(d1)+' متر') : (toFa(d0)+' تا '+toFa(d1)+' متر');
+      txt.appendChild(nm); txt.appendChild(rg);
+      row.appendChild(sw); row.appendChild(txt);
+      legend.appendChild(row);
+
+      if(hasSide){
+        var sideZ = cfg.zonesSide.filter(function(s){ return s[0]===key; })[0];
+        var backZ = (cfg.zonesBack||[]).filter(function(s){ return s[0]===key; })[0];
+        if(sideZ && backZ){
+          var rg2=document.createElement('div'); rg2.className='rng';
+          rg2.textContent='کناره و عقب: '+toFa(sideZ[2])+'–'+toFa(sideZ[3])+' متر';
+          txt.appendChild(rg2);
+        } else if(sideZ){
+          var rg3=document.createElement('div'); rg3.className='rng';
+          rg3.textContent='کناره: '+toFa(sideZ[2])+'–'+toFa(sideZ[3])+' متر (عقب ندارد)';
+          txt.appendChild(rg3);
+        }
+      }
+    });
+  }
+
+  btnLong.addEventListener('click', function(){ mode='longRange'; btnLong.classList.add('on'); btnShort.classList.remove('on'); render(); });
+  btnShort.addEventListener('click', function(){ mode='shortRange'; btnShort.classList.add('on'); btnLong.classList.remove('on'); render(); });
+
+  render();
+})();
+</script>
+</body>
+</html>

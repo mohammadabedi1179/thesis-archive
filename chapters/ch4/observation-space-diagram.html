@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>فضای مشاهده عامل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF6F0; --edge:#D8CABD; --text:#463F3A; --muted:#6B625B; --paper:#FFFDF9;
+    --g1:#5F9E5A; --g2:#4A6FA0; --g3:#8171A8; --g4:#C2703D; --g5:#B24C42; --net:#4A6FA0; --rl:#C2703D;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);}
+  body{ font-family:'Vazirmatn',Tahoma,Arial,sans-serif; color:var(--text); min-height:100vh; }
+  body::before{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(to right, rgba(232,221,210,0.55) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(232,221,210,0.55) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image: radial-gradient(circle at 50% 30%, black 0%, transparent 72%);
+  }
+  .wrap{ position:relative; z-index:1; max-width:1520px; margin:0 auto; padding:40px 24px 60px; }
+  .page-head{ text-align:center; margin-bottom:26px; }
+  .page-eyebrow{ font-size:12.5px; font-weight:600; letter-spacing:.16em; color:var(--rl); text-transform:uppercase; margin:0 0 10px; }
+  .page-title{ font-size:26px; font-weight:800; margin:0 0 8px; }
+  .page-sub{ font-size:13.5px; color:var(--muted); margin:0; font-weight:500; }
+
+  .stage-outer{ position:relative; width:100%; margin-top:26px; }
+  .stage{ position:relative; width:1460px; height:1160px; transform-origin:top right; }
+  svg#lines{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; z-index:1; }
+  .edge{ transition:opacity .28s ease; opacity:1; }
+  .edge.dim{ opacity:.08; }
+  .edge path{ fill:none; stroke-linecap:round; stroke-linejoin:round; transition:stroke-width .28s ease; }
+  .edge.active path{ stroke-width:4; }
+
+  .node{
+    position:absolute; background:var(--paper); border:2px solid var(--edge); border-radius:14px;
+    box-shadow:0 2px 10px rgba(70,63,58,.06); cursor:pointer; overflow:hidden;
+    transition:opacity .28s ease, transform .28s ease, box-shadow .28s ease;
+  }
+  .node.dim{ opacity:.16; }
+  .node.active{ opacity:1; transform:scale(1.015); box-shadow:0 10px 26px rgba(70,63,58,.16); z-index:20; }
+
+  .src{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; text-align:center; padding:8px; }
+  .src svg{ width:34px; height:34px; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .src span{ font-size:12.5px; font-weight:700; }
+
+  .bighead{ padding:12px 16px; text-align:center; }
+  .bighead .formula{ font-size:19px; font-weight:800; font-family:'Times New Roman',serif; color:var(--net); }
+  .bighead .sub{ font-size:11.5px; color:var(--muted); font-weight:600; margin-top:2px; }
+
+  .grp{ margin:8px 12px; border:2px solid; border-radius:10px; overflow:hidden; transition:opacity .28s ease, transform .28s ease, box-shadow .28s ease; }
+  .grp.subDim{ opacity:.2; }
+  .grp.subActive{ opacity:1; transform:scale(1.03); box-shadow:0 6px 16px rgba(70,63,58,.18); }
+  .grp-head{ display:flex; align-items:center; gap:8px; padding:6px 10px; color:#fff; font-size:13px; font-weight:800; }
+  .gnum{ width:20px; height:20px; border-radius:6px; background:rgba(255,255,255,.28); display:flex; align-items:center; justify-content:center; font-size:11px; }
+  .grp-vars{ padding:8px 12px; font-size:13.5px; font-weight:700; font-family:'Times New Roman',serif; text-align:center; color:var(--text); background:rgba(255,255,255,.5); }
+  .normline{ margin:10px 14px; border:2px dashed var(--edge); border-radius:8px; padding:6px; text-align:center; font-size:12px; font-weight:700; color:var(--muted); }
+
+  .tblwrap{ margin:8px 14px; }
+  table.omat{ width:100%; border-collapse:collapse; font-size:11.5px; font-family:'Times New Roman',serif; }
+  table.omat th, table.omat td{ border:1.3px solid var(--edge); padding:4px 3px; text-align:center; }
+  table.omat th{ background:var(--bg); color:var(--net); font-weight:800; }
+  table.omat td.rowlbl{ background:var(--bg); font-weight:800; color:var(--muted); }
+  .bullets{ margin:10px 14px; display:flex; flex-direction:column; gap:6px; }
+  .bullets .bl{ font-size:11.5px; font-weight:600; display:flex; gap:6px; align-items:flex-start; }
+  .bullets .bl::before{ content:"•"; color:var(--net); font-weight:900; }
+
+  .netbox{ display:flex; flex-direction:row; align-items:center; justify-content:center; gap:14px; text-align:right; padding:10px; height:100%; }
+  .netbox .icon-badge{ width:52px; height:52px; border-radius:14px; background:var(--bg); border:1.5px solid var(--edge); display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .netbox .icon-badge svg{ width:28px; height:28px; stroke:var(--net); fill:none; stroke-width:1.7; }
+  .netbox .t1{ font-weight:800; font-size:15px; color:var(--net); }
+  .netbox .t2{ font-size:11.5px; color:var(--muted); font-weight:600; }
+
+  .rlbox{ display:flex; flex-direction:row; align-items:center; justify-content:center; gap:16px; text-align:right; padding:10px; height:100%; }
+  .rlbox .icon-badge{ width:56px; height:56px; border-radius:16px; background:var(--rl); display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .rlbox .icon-badge svg{ width:30px; height:30px; stroke:#fff; fill:none; stroke-width:1.6; }
+  .rlbox .t1{ font-weight:800; font-size:16px; color:var(--rl); }
+  .rlbox .t2{ font-size:12px; color:var(--muted); font-weight:600; }
+
+  @media (max-width:1100px){ .page-title{font-size:21px;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-head">
+    <p class="page-eyebrow">فرمول‌بندی یادگیری تقویتی</p>
+    <h1 class="page-title">فضای مشاهده عامل</h1>
+    <p class="page-sub">نشانگر ماوس را روی هر منبع نگه دارید تا بخش متناظر آن در بردار ویژگی‌های ثابت برجسته شود</p>
+  </div>
+
+  <div class="stage-outer" id="stageOuter">
+    <div class="stage" id="stage">
+
+      <svg id="lines" viewBox="0 0 1460 1160">
+        <defs>
+          <marker id="mkg1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10Z" fill="#5F9E5A"></path></marker>
+          <marker id="mkg2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10Z" fill="#4A6FA0"></path></marker>
+          <marker id="mkg3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10Z" fill="#8171A8"></path></marker>
+          <marker id="mkg4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10Z" fill="#C2703D"></path></marker>
+          <marker id="mkg5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10Z" fill="#B24C42"></path></marker>
+          <marker id="mknet" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10Z" fill="#4A6FA0"></path></marker>
+          <marker id="mkrl" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10Z" fill="#C2703D"></path></marker>
+        </defs>
+
+        <g class="edge" data-id="e-goal" data-source="goal" data-target="sfixed"><path d="M170,155 L260,230" stroke="#5F9E5A" stroke-width="2.6" marker-end="url(#mkg1)"></path></g>
+        <g class="edge" data-id="e-odom" data-source="odom" data-target="sfixed"><path d="M170,265 L260,320" stroke="#4A6FA0" stroke-width="2.6" marker-end="url(#mkg2)"></path></g>
+        <g class="edge" data-id="e-us" data-source="us" data-target="sfixed"><path d="M170,375 L260,410" stroke="#8171A8" stroke-width="2.6" marker-end="url(#mkg3)"></path></g>
+        <g class="edge" data-id="e-prev" data-source="prev" data-target="sfixed"><path d="M170,485 L260,500" stroke="#C2703D" stroke-width="2.6" marker-end="url(#mkg4)"></path></g>
+        <g class="edge" data-id="e-shield" data-source="shield" data-target="sfixed"><path d="M170,595 L260,590" stroke="#B24C42" stroke-width="2.6" marker-end="url(#mkg5)"></path></g>
+
+        <g class="edge" data-id="e-perc" data-source="obsperc" data-target="omatrix"><path d="M1220,245 L1200,245" stroke="#4A6FA0" stroke-width="2.6" marker-end="url(#mknet)"></path></g>
+        <g class="edge" data-id="e-mem" data-source="obsmem" data-target="omatrix"><path d="M1220,405 L1200,405" stroke="#4A6FA0" stroke-width="2.6" marker-end="url(#mknet)"></path></g>
+
+        <g class="edge" data-id="e-dict-s" data-source="dict" data-target="sfixed"><path d="M600,110 L470,140" stroke="#4A6FA0" stroke-width="2.6" marker-end="url(#mknet)"></path></g>
+        <g class="edge" data-id="e-dict-o" data-source="dict" data-target="omatrix"><path d="M860,110 L970,140" stroke="#4A6FA0" stroke-width="2.6" marker-end="url(#mknet)"></path></g>
+
+        <g class="edge" data-id="e-s-mlp" data-source="sfixed" data-target="mlp"><path d="M470,700 L470,742" stroke="#4A6FA0" stroke-width="2.6" marker-end="url(#mknet)"></path></g>
+        <g class="edge" data-id="e-o-lstm" data-source="omatrix" data-target="lstm"><path d="M970,700 L970,742" stroke="#4A6FA0" stroke-width="2.6" marker-end="url(#mknet)"></path></g>
+
+        <g class="edge" data-id="e-mlp-rl" data-source="mlp" data-target="rlagent"><path d="M470,900 L470,920 L640,920 L640,942" stroke="#C2703D" stroke-width="2.6" marker-end="url(#mkrl)"></path></g>
+        <g class="edge" data-id="e-lstm-rl" data-source="lstm" data-target="rlagent"><path d="M970,900 L970,920 L800,920 L800,942" stroke="#C2703D" stroke-width="2.6" marker-end="url(#mkrl)"></path></g>
+      </svg>
+
+      <div class="node src" data-id="goal" data-sub="grp1" style="left:20px; top:110px; width:150px; height:90px; border-color:#5F9E5A;">
+        <svg viewBox="0 0 44 44" stroke="#5F9E5A"><circle cx="22" cy="22" r="16"></circle><circle cx="22" cy="22" r="8"></circle><circle cx="22" cy="22" r="1.6" fill="#5F9E5A" stroke="none"></circle></svg>
+        <span style="color:#5F9E5A">هدف</span>
+      </div>
+      <div class="node src" data-id="odom" data-sub="grp2" style="left:20px; top:220px; width:150px; height:90px; border-color:#4A6FA0;">
+        <svg viewBox="0 0 44 44" stroke="#4A6FA0"><path d="M8 30a14 14 0 1128 0"></path><path d="M22 30l6-10"></path><circle cx="22" cy="30" r="2" fill="#4A6FA0" stroke="none"></circle></svg>
+        <span style="color:#4A6FA0">اودومتری</span>
+      </div>
+      <div class="node src" data-id="us" data-sub="grp3" style="left:20px; top:330px; width:150px; height:90px; border-color:#8171A8;">
+        <svg viewBox="0 0 44 44" stroke="#8171A8"><path d="M22 34a12 12 0 010-24M22 28a6 6 0 010-12M22 22h.01"></path></svg>
+        <span style="color:#8171A8">فراصوت</span>
+      </div>
+      <div class="node src" data-id="prev" data-sub="grp4" style="left:20px; top:440px; width:150px; height:90px; border-color:#C2703D;">
+        <svg viewBox="0 0 44 44" stroke="#C2703D"><circle cx="22" cy="14" r="7"></circle><path d="M22 21v14M14 40l8-5 8 5"></path></svg>
+        <span style="color:#C2703D">فرمان قبلی</span>
+      </div>
+      <div class="node src" data-id="shield" data-sub="grp5" style="left:20px; top:550px; width:150px; height:90px; border-color:#B24C42;">
+        <svg viewBox="0 0 44 44" stroke="#B24C42"><path d="M22 5l14 5v11c0 9-6 15-14 18-8-3-14-9-14-18V10z"></path><path d="M16 22l4 4 8-8"></path></svg>
+        <span style="color:#B24C42">سپر ایمنی</span>
+      </div>
+
+      <div class="node" data-id="dict" style="left:440px; top:20px; width:560px; height:92px;">
+        <div class="bighead">
+          <div class="formula">O<sub>t</sub> = { s<sub>t</sub><sup>fixed</sup> , O<sub>t</sub> }</div>
+          <div class="sub">ساختار دیکشنری مشاهده عامل</div>
+        </div>
+      </div>
+
+      <div class="node" data-id="sfixed" style="left:260px; top:140px; width:420px; height:560px;">
+        <div class="bighead"><div class="formula" style="font-size:15px;">بردار ویژگی‌های ثابت s<sub>t</sub><sup>fixed</sup> ∈ ℝ<sup>15</sup></div></div>
+        <div class="grp" id="grp1" style="border-color:#5F9E5A;"><div class="grp-head" style="background:#5F9E5A;"><span class="gnum">۱</span>هدف (۴)</div><div class="grp-vars">d<sub>g</sub> , φ<sub>g</sub> , v<sub>g,x</sub><sup>rel</sup> , v<sub>g,y</sub><sup>rel</sup></div></div>
+        <div class="grp" id="grp2" style="border-color:#4A6FA0;"><div class="grp-head" style="background:#4A6FA0;"><span class="gnum">۲</span>ربات (۲)</div><div class="grp-vars">v , ω</div></div>
+        <div class="grp" id="grp3" style="border-color:#8171A8;"><div class="grp-head" style="background:#8171A8;"><span class="gnum">۳</span>فراصوت (۵)</div><div class="grp-vars">u<sub>FL</sub> , u<sub>FR</sub> , u<sub>LS</sub> , u<sub>RS</sub> , u<sub>B</sub></div></div>
+        <div class="grp" id="grp4" style="border-color:#C2703D;"><div class="grp-head" style="background:#C2703D;"><span class="gnum">۴</span>فرمان قبلی (۲)</div><div class="grp-vars">v<sub>t-1</sub><sup>policy</sup> , ω<sub>t-1</sub><sup>policy</sup></div></div>
+        <div class="grp" id="grp5" style="border-color:#B24C42;"><div class="grp-head" style="background:#B24C42;"><span class="gnum">۵</span>سپر (۲)</div><div class="grp-vars">ℓ<sub>shield</sub> , τ<sub>shield</sub></div></div>
+        <div class="normline">نرمال‌سازی</div>
+      </div>
+
+      <div class="node" data-id="omatrix" style="left:740px; top:140px; width:460px; height:560px;">
+        <div class="bighead"><div class="formula" style="font-size:15px;">ماتریس ویژگی‌های موانع O<sub>t</sub> ∈ ℝ<sup>10×5</sup></div></div>
+        <div class="tblwrap">
+          <table class="omat">
+            <tr><th></th><th>x<sub>i</sub></th><th>y<sub>i</sub></th><th>d<sub>i</sub></th><th>v<sub>x,i</sub><sup>rel</sup></th><th>v<sub>y,i</sub><sup>rel</sup></th></tr>
+            <tr><td class="rowlbl">o<sub>1,t</sub></td><td>x<sub>1</sub></td><td>y<sub>1</sub></td><td>d<sub>1</sub></td><td>v<sub>x,1</sub><sup>rel</sup></td><td>v<sub>y,1</sub><sup>rel</sup></td></tr>
+            <tr><td class="rowlbl">o<sub>2,t</sub></td><td>x<sub>2</sub></td><td>y<sub>2</sub></td><td>d<sub>2</sub></td><td>v<sub>x,2</sub><sup>rel</sup></td><td>v<sub>y,2</sub><sup>rel</sup></td></tr>
+            <tr><td class="rowlbl">o<sub>3,t</sub></td><td>x<sub>3</sub></td><td>y<sub>3</sub></td><td>d<sub>3</sub></td><td>v<sub>x,3</sub><sup>rel</sup></td><td>v<sub>y,3</sub><sup>rel</sup></td></tr>
+            <tr><td class="rowlbl">⋮</td><td>⋮</td><td>⋮</td><td>⋮</td><td>⋮</td><td>⋮</td></tr>
+            <tr><td class="rowlbl">o<sub>10,t</sub></td><td>x<sub>10</sub></td><td>y<sub>10</sub></td><td>d<sub>10</sub></td><td>v<sub>x,10</sub><sup>rel</sup></td><td>v<sub>y,10</sub><sup>rel</sup></td></tr>
+          </table>
+        </div>
+        <div class="bullets">
+          <div class="bl">هر سطر: یک مانع</div>
+          <div class="bl">مرتب‌سازی: نزدیک به دور</div>
+          <div class="bl">در نبود مانع: [۰,۰,۱,۰,۰]</div>
+        </div>
+      </div>
+
+      <div class="node src" data-id="obsperc" style="left:1220px; top:200px; width:180px; height:90px; border-color:#4A6FA0;">
+        <svg viewBox="0 0 44 44" stroke="#4A6FA0"><circle cx="22" cy="22" r="6"></circle><circle cx="10" cy="12" r="3"></circle><circle cx="34" cy="12" r="3"></circle><circle cx="10" cy="32" r="3"></circle><circle cx="34" cy="32" r="3"></circle></svg>
+        <span style="color:#4A6FA0;">ادراک موانع</span>
+      </div>
+      <div class="node src" data-id="obsmem" style="left:1220px; top:360px; width:180px; height:90px; border-color:#4A6FA0;">
+        <svg viewBox="0 0 44 44" stroke="#4A6FA0"><ellipse cx="22" cy="10" rx="14" ry="5"></ellipse><path d="M8 10v24a14 5 0 0028 0V10"></path><path d="M8 22a14 5 0 0028 0"></path></svg>
+        <span style="color:#4A6FA0;">حافظه موانع</span>
+      </div>
+
+      <div class="node" data-id="mlp" style="left:260px; top:742px; width:420px; height:158px;">
+        <div class="netbox">
+          <div class="icon-badge"><svg viewBox="0 0 44 44"><circle cx="8" cy="14" r="2.5"></circle><circle cx="8" cy="30" r="2.5"></circle><circle cx="22" cy="8" r="2.5"></circle><circle cx="22" cy="22" r="2.5"></circle><circle cx="22" cy="36" r="2.5"></circle><circle cx="36" cy="14" r="2.5"></circle><circle cx="36" cy="30" r="2.5"></circle><path d="M8 14l14-6M8 14l14 8M8 14l14 22M8 30l14-8M8 30l14 6M8 30l14-22M22 8l14 6M22 22l14-8M22 22l14 8M22 36l14-6"></path></svg></div>
+          <div><div class="t1">MLP</div><div class="t2">ویژگی‌های ثابت</div></div>
+        </div>
+      </div>
+      <div class="node" data-id="lstm" style="left:740px; top:742px; width:460px; height:158px;">
+        <div class="netbox">
+          <div class="icon-badge"><svg viewBox="0 0 44 44"><rect x="6" y="16" width="10" height="12" rx="2"></rect><rect x="17" y="16" width="10" height="12" rx="2"></rect><rect x="28" y="16" width="10" height="12" rx="2"></rect><path d="M16 22h1M27 22h1M38 22h3"></path></svg></div>
+          <div><div class="t1">LSTM</div><div class="t2">موانع</div></div>
+        </div>
+      </div>
+
+      <div class="node" data-id="rlagent" style="left:500px; top:942px; width:460px; height:170px;">
+        <div class="rlbox">
+          <div class="icon-badge"><svg viewBox="0 0 44 44"><path d="M14 12c-5 1-7 6-5 9-3 3-2 8 2 9 1 4 6 6 9 3 4 3 9 0 9-4 4-2 4-7 1-9 2-4-1-8-5-8-2-3-7-3-11 0z"></path></svg></div>
+          <div><div class="t1">ورودی RL عامل</div><div class="t2">سیاست عامل</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var nodes = Array.prototype.slice.call(document.querySelectorAll('.node'));
+  var edges = Array.prototype.slice.call(document.querySelectorAll('.edge'));
+  var grps = Array.prototype.slice.call(document.querySelectorAll('.grp'));
+  var locked = null;
+
+  function clearAll(){
+    nodes.forEach(function(n){ n.classList.remove('active','dim'); });
+    edges.forEach(function(e){ e.classList.remove('active','dim'); });
+    grps.forEach(function(g){ g.classList.remove('subActive','subDim'); });
+  }
+  function activate(id, subTarget){
+    var connected={}; connected[id]=true; var activeEdges={};
+    edges.forEach(function(edge){
+      var src=edge.getAttribute('data-source'), tgt=edge.getAttribute('data-target');
+      if(src===id || tgt===id){ connected[src]=true; connected[tgt]=true; activeEdges[edge.getAttribute('data-id')]=true; }
+    });
+    nodes.forEach(function(n){
+      var nid=n.getAttribute('data-id');
+      if(connected[nid]){ n.classList.add('active'); n.classList.remove('dim'); }
+      else { n.classList.remove('active'); n.classList.add('dim'); }
+    });
+    edges.forEach(function(e){
+      var eid=e.getAttribute('data-id');
+      if(activeEdges[eid]){ e.classList.add('active'); e.classList.remove('dim'); }
+      else { e.classList.remove('active'); e.classList.add('dim'); }
+    });
+    if(subTarget){
+      grps.forEach(function(g){
+        if(g.id === subTarget){ g.classList.add('subActive'); g.classList.remove('subDim'); }
+        else { g.classList.add('subDim'); g.classList.remove('subActive'); }
+      });
+    } else {
+      grps.forEach(function(g){ g.classList.remove('subActive','subDim'); });
+    }
+  }
+  nodes.forEach(function(n){
+    var id=n.getAttribute('data-id');
+    var sub=n.getAttribute('data-sub');
+    n.addEventListener('mouseenter', function(){ if(!locked) activate(id, sub); });
+    n.addEventListener('mouseleave', function(){ if(!locked) clearAll(); });
+    n.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      if(locked===id){ locked=null; clearAll(); }
+      else { locked=id; activate(id, sub); }
+    });
+  });
+  document.addEventListener('click', function(){ locked=null; clearAll(); });
+
+  var stageOuter=document.getElementById('stageOuter'), stage=document.getElementById('stage');
+  function fit(){
+    var w=stageOuter.clientWidth;
+    var scale=Math.min(1, w/1460);
+    stage.style.transform='scale('+scale+')';
+    stageOuter.style.height=(1160*scale)+'px';
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  fit();
+})();
+</script>
+</body>
+</html>
