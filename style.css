@@ -100,6 +100,8 @@ body.has-texture::before{
 }
 .chapter-card.is-empty{ border-style:dashed; }
 .chapter-card.is-empty .chapter-card-count{ color:var(--faint); }
+.chapter-card.is-extra .chapter-tab{ background:var(--secondary); border-color:var(--secondary); color:var(--paper); }
+.chapter-card.is-extra .chapter-card-count{ color:var(--secondary); }
 
 .chapter-tab{
   align-self:flex-start;

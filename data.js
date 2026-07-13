@@ -20,6 +20,16 @@ const CHAPTERS = [
     blurb: 'ابزارها و تحلیل‌های جانبی خارج از ساختار اصلی متن' }
 ];
 
+/* ── Extra home-page tiles ──────────────────────────────────
+   These render next to the chapter cards but link straight to a
+   single page instead of a chapters/<id>/ folder — no auto-discovery,
+   no document count, just a direct link. Add one object per tile. */
+const EXTRA_TILES = [
+  { num: '⛶', title: 'مدل سه‌بعدی تعاملی',
+    blurb: 'مشاهدهٔ مستقیم مدل — چرخش و بزرگ‌نمایی آزاد',
+    href: 'viewer/scooter-3d-model.html' }
+];
+
 /* ── Repo settings ───────────────────────────────────────────
    Leave both blank to auto-detect from the page URL (works out of
    the box on a normal GitHub Pages URL: https://OWNER.github.io/REPO/).
