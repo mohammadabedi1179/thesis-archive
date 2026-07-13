@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>استخراج صفحه Y | پردازش استریو</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF6F0; --edge:#D8CABD; --text:#463F3A; --muted:#6B625B; --paper:#FFFDF9;
+    --s1:#5B7FA6; --s2:#C2703D; --s3:#6E8F5D; --s4:#8171A8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);}
+  body{ font-family:'Vazirmatn',Tahoma,Arial,sans-serif; color:var(--text); min-height:100vh; }
+  body::before{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(to right, rgba(232,221,210,0.55) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(232,221,210,0.55) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image: radial-gradient(circle at 50% 30%, black 0%, transparent 72%);
+  }
+  .wrap{ position:relative; z-index:1; max-width:1400px; margin:0 auto; padding:40px 24px 60px; }
+  .page-head{ text-align:center; margin-bottom:28px; }
+  .page-eyebrow{ font-size:12.5px; font-weight:600; letter-spacing:.16em; color:var(--s2); text-transform:uppercase; margin:0 0 10px; }
+  .page-title{ font-size:26px; font-weight:800; margin:0 0 8px; }
+  .page-sub{ font-size:13.5px; color:var(--muted); margin:0; font-weight:500; }
+
+  .yp-row{ direction:ltr; display:flex; gap:16px; align-items:stretch; height:680px; }
+  .yp-panel{
+    direction:rtl; flex:1 1 0; min-width:0; background:var(--paper); border:2px solid var(--edge);
+    border-radius:18px; overflow:hidden; display:flex; flex-direction:column;
+    box-shadow:0 2px 10px rgba(70,63,58,.06);
+    transition:flex .55s cubic-bezier(.4,0,.2,1), opacity .4s ease, box-shadow .3s ease;
+    cursor:pointer;
+  }
+  .yp-panel.collapsed{ flex:0 0 0%; opacity:0; border-width:0; pointer-events:none; }
+  .yp-panel.expanded{ box-shadow:0 14px 34px rgba(70,63,58,.16); }
+  .yp-head{ padding:14px 18px; display:flex; align-items:center; gap:10px; color:#FBF8F3; flex:0 0 auto; }
+  .yp-panel[data-stage="1"] .yp-head{ background:var(--s1); }
+  .yp-panel[data-stage="2"] .yp-head{ background:var(--s2); }
+  .yp-panel[data-stage="3"] .yp-head{ background:var(--s3); }
+  .yp-panel[data-stage="4"] .yp-head{ background:var(--s4); }
+  .yp-num{ width:24px; height:24px; border-radius:50%; background:rgba(255,255,255,.28); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; flex:0 0 auto; }
+  .yp-title{ font-weight:800; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .yp-body{ position:relative; flex:1; }
+  .yp-preview, .yp-anim{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:16px; text-align:center; }
+  .yp-preview{ opacity:1; transition:opacity .3s ease; }
+  .yp-anim{ opacity:0; transition:opacity .3s ease; }
+  .yp-panel.expanded .yp-preview{ opacity:0; }
+  .yp-panel.expanded .yp-anim{ opacity:1; }
+
+  .icon-badge{ width:52px; height:52px; border-radius:14px; background:var(--bg); border:1.5px solid var(--edge); display:flex; align-items:center; justify-content:center; }
+  .icon-badge svg{ width:28px; height:28px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .yp-preview .cap{ font-size:12px; color:var(--muted); font-weight:600; max-width:180px; }
+  .yp-hint{ font-size:10.5px; color:var(--muted); opacity:.7; margin-top:2px; }
+
+  canvas{ border-radius:8px; border:1.5px solid var(--edge); background:#fff; display:block; }
+
+  /* ---------------- Stage 1 ---------------- */
+  .s1-row{ display:flex; align-items:center; gap:24px; }
+  .cam{ color:var(--s1); }
+  .cam svg{ width:58px; height:58px; }
+  .frames{ display:flex; gap:16px; }
+  .frameBox{ display:flex; flex-direction:column; align-items:center; gap:4px; opacity:0; transform:scale(.7); }
+  .frameBox span{ font-size:13px; font-weight:700; color:var(--s1); }
+  .yp-panel[data-stage="1"].expanded .cam{ animation:camFlash 3s ease-in-out infinite; }
+  @keyframes camFlash{ 0%,100%{filter:brightness(1);} 6%{filter:brightness(1.7);} 12%{filter:brightness(1);} }
+  .yp-panel[data-stage="1"].expanded .fL{ animation:frameShow 3s ease-in-out infinite; animation-delay:.15s; }
+  .yp-panel[data-stage="1"].expanded .fR{ animation:frameShow 3s ease-in-out infinite; animation-delay:.4s; }
+  @keyframes frameShow{ 0%{opacity:0; transform:scale(.7);} 15%{opacity:1; transform:scale(1);} 85%{opacity:1; transform:scale(1);} 100%{opacity:0; transform:scale(.7);} }
+
+  /* ---------------- Stage 2 ---------------- */
+  .s2-row{ display:flex; align-items:center; gap:20px; }
+  .s2-arrow{ font-size:30px; color:var(--muted); }
+  .planeStack{ position:relative; width:760px; height:190px; direction:ltr; }
+  .planeStack .pb{ position:absolute; top:0; left:0; display:flex; flex-direction:column; align-items:center; gap:5px; transition:none; }
+  .planeStack .pb span{ font-size:12.5px; font-weight:700; }
+  .p-y span{ color:var(--s3); }
+  .p-u span{ color:#3E6FA6; }
+  .p-v span{ color:#B0544F; }
+  .yp-panel[data-stage="2"].expanded .p-u{ animation:puOut 3.4s ease-in-out infinite; }
+  .yp-panel[data-stage="2"].expanded .p-v{ animation:pvOut 3.4s ease-in-out infinite; }
+  .yp-panel[data-stage="2"].expanded .p-y{ animation:pyPulse 3.4s ease-in-out infinite; }
+  @keyframes puOut{ 0%{transform:translateX(0);} 22%,72%{transform:translateX(254px);} 100%{transform:translateX(0);} }
+  @keyframes pvOut{ 0%{transform:translateX(0);} 22%,72%{transform:translateX(508px);} 100%{transform:translateX(0);} }
+  @keyframes pyPulse{ 0%,100%{filter:drop-shadow(0 0 0 rgba(110,143,93,0));} 30%,60%{filter:drop-shadow(0 0 6px rgba(110,143,93,.55));} }
+
+  /* ---------------- Stage 3 ---------------- */
+  .s3-row{ display:flex; align-items:center; gap:30px; }
+  .s3-y{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .s3-y span{ font-size:13.5px; font-weight:800; color:var(--s3); }
+  .s3-badges{ display:flex; flex-direction:column; gap:14px; }
+  .badge{ display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .badge span{ font-size:11.5px; font-weight:700; }
+  .trashWrap{ display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--muted); }
+  .trashWrap svg{ width:32px; height:32px; stroke:currentColor; fill:none; stroke-width:1.8; }
+  .trashWrap span{ font-size:12px; font-weight:600; }
+  .ticks{ display:flex; flex-direction:column; gap:4px; align-items:flex-start; opacity:0; }
+  .ticks div{ font-size:13px; font-weight:600; color:var(--s3); }
+  .yp-panel[data-stage="3"].expanded .b-u{ animation:toTrash 3.2s ease-in-out infinite; --tx:175px; --ty:70px; }
+  .yp-panel[data-stage="3"].expanded .b-v{ animation:toTrash 3.2s ease-in-out infinite; --tx:175px; --ty:-70px; animation-delay:.12s; }
+  @keyframes toTrash{ 0%{transform:translate(0,0) scale(1); opacity:1;} 34%,66%{transform:translate(var(--tx),var(--ty)) scale(.2); opacity:0;} 100%{transform:translate(0,0) scale(1); opacity:1;} }
+  .yp-panel[data-stage="3"].expanded .s3-y{ animation:ykeep 3.2s ease-in-out infinite; }
+  @keyframes ykeep{ 0%{transform:scale(1);} 40%,66%{transform:scale(1.12);} 100%{transform:scale(1);} }
+  .yp-panel[data-stage="3"].expanded .trashIcon{ animation:trashHit 3.2s ease-in-out infinite; }
+  @keyframes trashHit{ 0%,32%{transform:scale(1);} 38%{transform:scale(1.3);} 48%{transform:scale(1);} 100%{transform:scale(1);} }
+  .yp-panel[data-stage="3"].expanded .ticks{ animation:tickShow 3.2s ease-in-out infinite; }
+  @keyframes tickShow{ 0%,40%{opacity:0; transform:translateY(4px);} 55%,90%{opacity:1; transform:translateY(0);} 100%{opacity:0; transform:translateY(4px);} }
+
+  /* ---------------- Stage 4 ---------------- */
+  .s4-top{ display:flex; align-items:center; gap:20px; }
+  .s4-y{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .s4-y span{ font-size:13px; font-weight:700; color:var(--s4); }
+  .gear{ color:var(--s4); }
+  .gear svg{ width:54px; height:54px; }
+  .yp-panel[data-stage="4"].expanded .yl{ animation:mergeL 3.6s ease-in-out infinite; }
+  .yp-panel[data-stage="4"].expanded .yr{ animation:mergeR 3.6s ease-in-out infinite; }
+  @keyframes mergeL{ 0%{transform:translateX(0); opacity:1;} 30%,55%{transform:translateX(90px); opacity:.4;} 100%{transform:translateX(0); opacity:1;} }
+  @keyframes mergeR{ 0%{transform:translateX(0); opacity:1;} 30%,55%{transform:translateX(-90px); opacity:.4;} 100%{transform:translateX(0); opacity:1;} }
+  .yp-panel[data-stage="4"].expanded .gear{ animation:gearPulse 3.6s ease-in-out infinite; }
+  @keyframes gearPulse{ 0%,25%{transform:scale(1) rotate(0);} 42%{transform:scale(1.18) rotate(30deg);} 58%{transform:scale(1) rotate(0);} 100%{transform:scale(1);} }
+  .s4-outs{ display:flex; flex-direction:row; gap:30px; margin-top:20px; width:100%; align-items:flex-start; justify-content:center; }
+  .s4-out{ display:flex; flex-direction:column; align-items:center; gap:10px; opacity:0; transform:translateY(6px); width:210px; text-align:center; }
+  .s4-out .icon-badge{ width:88px; height:88px; border-radius:18px; }
+  .s4-out .icon-badge svg{ width:42px; height:42px; }
+  .s4-out span{ font-size:13.5px; font-weight:600; line-height:1.4; }
+  .yp-panel[data-stage="4"].expanded .o1{ animation:fadeStep 3.6s ease-in-out infinite; animation-delay:0s; }
+  .yp-panel[data-stage="4"].expanded .o2{ animation:fadeStep 3.6s ease-in-out infinite; animation-delay:.14s; }
+  .yp-panel[data-stage="4"].expanded .o3{ animation:fadeStep 3.6s ease-in-out infinite; animation-delay:.28s; }
+  @keyframes fadeStep{ 0%,55%{opacity:0; transform:translateY(6px);} 70%,92%{opacity:1; transform:translateY(0);} 100%{opacity:0; transform:translateY(6px);} }
+
+  @media (max-width:900px){
+    .yp-row{ height:auto; flex-direction:column; }
+    .yp-panel{ min-height:220px; }
+    .yp-panel.collapsed{ flex:0 0 0%; min-height:0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-head">
+    <p class="page-eyebrow">فرایند پیش‌پردازش تصویر استریو</p>
+    <h1 class="page-title">از فریم خام تا صفحه Y</h1>
+    <p class="page-sub">نشانگر ماوس را روی هر بلوک نگه دارید — بلوک‌های دیگر کنار می‌روند و فرایند همان مرحله در فضای باز شده اجرا می‌شود</p>
+  </div>
+
+  <div class="yp-row" id="ypRow">
+
+    <div class="yp-panel" data-stage="1">
+      <div class="yp-head"><span class="yp-num">۱</span><span class="yp-title">فریم‌های خام استریو</span></div>
+      <div class="yp-body">
+        <div class="yp-preview">
+          <div class="icon-badge" style="color:var(--s1)"><svg viewBox="0 0 44 44"><rect x="6" y="14" width="32" height="20" rx="4"></rect><circle cx="16" cy="24" r="5"></circle><circle cx="28" cy="24" r="5"></circle><rect x="16" y="9" width="6" height="6" rx="1"></rect></svg></div>
+          <div class="cap">دو فریم رنگی هم‌زمان از دوربین استریو</div>
+          <div class="yp-hint">نگه دارید</div>
+        </div>
+        <div class="yp-anim">
+          <div class="s1-row">
+            <div class="cam"><svg viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="14" width="32" height="20" rx="4"></rect><circle cx="16" cy="24" r="5"></circle><circle cx="28" cy="24" r="5"></circle><rect x="16" y="9" width="6" height="6" rx="1"></rect></svg></div>
+            <div class="frames">
+              <div class="frameBox fL"><canvas id="c1L" width="370" height="250"></canvas><span>فریم چپ</span></div>
+              <div class="frameBox fR"><canvas id="c1R" width="370" height="250"></canvas><span>فریم راست</span></div>
+            </div>
+          </div>
+          <div class="cap" style="margin-top:14px;">ثبت‌شده روی رزبری پای ۵</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="yp-panel" data-stage="2">
+      <div class="yp-head"><span class="yp-num">۲</span><span class="yp-title">فرمت ورودی YUV420</span></div>
+      <div class="yp-body">
+        <div class="yp-preview">
+          <div class="icon-badge" style="color:var(--s2)"><svg viewBox="0 0 44 44"><rect x="6" y="14" width="20" height="20" rx="4"></rect><rect x="14" y="10" width="20" height="20" rx="4"></rect><rect x="20" y="6" width="14" height="14" rx="4"></rect></svg></div>
+          <div class="cap">هر فریم به سه صفحه Y و U و V تجزیه می‌شود</div>
+          <div class="yp-hint">نگه دارید</div>
+        </div>
+        <div class="yp-anim">
+          <div class="s2-row">
+            <canvas id="c2In" width="380" height="260"></canvas>
+            <div class="s2-arrow">&#8592;</div>
+            <div class="planeStack">
+              <div class="pb p-y" style="z-index:3"><canvas id="c2Y" width="240" height="163"></canvas><span>Y</span></div>
+              <div class="pb p-u" style="z-index:2"><canvas id="c2U" width="240" height="163"></canvas><span>U</span></div>
+              <div class="pb p-v" style="z-index:1"><canvas id="c2V" width="240" height="163"></canvas><span>V</span></div>
+            </div>
+          </div>
+          <div class="cap" style="margin-top:14px;">YUV420 = روشنایی (Y) + رنگ (Chrominance)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="yp-panel" data-stage="3">
+      <div class="yp-head"><span class="yp-num">۳</span><span class="yp-title">استخراج صفحه Y</span></div>
+      <div class="yp-body">
+        <div class="yp-preview">
+          <div class="icon-badge" style="color:var(--s3)"><svg viewBox="0 0 44 44"><rect x="6" y="10" width="24" height="24" rx="4"></rect><path d="M34 15h6M34 21h6"></path></svg></div>
+          <div class="cap">صفحات U و V حذف می‌شوند؛ فقط Y نگه‌داری می‌شود</div>
+          <div class="yp-hint">نگه دارید</div>
+        </div>
+        <div class="yp-anim">
+          <div class="s3-row">
+            <div class="s3-y"><canvas id="c3Y" width="430" height="300"></canvas><span>صفحه Y — خروجی نهایی</span></div>
+            <div class="s3-badges">
+              <div class="badge b-u"><canvas id="c3U" width="195" height="136"></canvas><span>U</span></div>
+              <div class="badge b-v"><canvas id="c3V" width="195" height="136"></canvas><span>V</span></div>
+            </div>
+            <div class="trashWrap"><svg class="trashIcon" viewBox="0 0 44 44"><path d="M10 14h24M17 14V9a2 2 0 012-2h6a2 2 0 012 2v5M14 14l1.5 22a2 2 0 002 2h9a2 2 0 002-2L30.5 14"></path><path d="M19 20v10M25 20v10"></path></svg><span>حذف</span></div>
+          </div>
+          <div class="ticks">
+            <div>&#10003; دارای اطلاعات روشنایی</div>
+            <div>&#10003; نیازی به پردازش رنگ ندارد</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="yp-panel" data-stage="4">
+      <div class="yp-head"><span class="yp-num">۴</span><span class="yp-title">استفاده در پردازش استریو</span></div>
+      <div class="yp-body">
+        <div class="yp-preview">
+          <div class="icon-badge" style="color:var(--s4)"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="8"></circle><path d="M22 4v6M22 34v6M4 22h6M34 22h6M9 9l4.2 4.2M30.8 30.8L35 35M35 9l-4.2 4.2M13.2 30.8L9 35"></path></svg></div>
+          <div class="cap">تطابق استریو و برآورد عمق از دو صفحه Y</div>
+          <div class="yp-hint">نگه دارید</div>
+        </div>
+        <div class="yp-anim" style="justify-content:flex-start; padding-top:22px;">
+          <div class="s4-top">
+            <div class="s4-y yl"><canvas id="c4L" width="310" height="215"></canvas><span>چپ</span></div>
+            <div class="gear"><svg viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="22" cy="22" r="8"></circle><path d="M22 4v6M22 34v6M4 22h6M34 22h6M9 9l4.2 4.2M30.8 30.8L35 35M35 9l-4.2 4.2M13.2 30.8L9 35"></path></svg></div>
+            <div class="s4-y yr"><canvas id="c4R" width="310" height="215"></canvas><span>راست</span></div>
+          </div>
+          <div class="s4-outs">
+            <div class="s4-out o1"><div class="icon-badge" style="color:var(--s4)"><svg viewBox="0 0 44 44"><circle cx="10" cy="12" r="3"></circle><circle cx="22" cy="22" r="3"></circle><circle cx="34" cy="12" r="3"></circle><circle cx="16" cy="34" r="3"></circle><path d="M10 12l12 10 12-10M22 22l-6 12" stroke-dasharray="3 3"></path></svg></div><span>تطابق استریو</span></div>
+            <div class="s4-out o2"><div class="icon-badge" style="color:var(--s4)"><svg viewBox="0 0 44 44"><path d="M6 10c8-4 24-4 32 0M6 22c8-3 24-3 32 0M6 34c8-4 24-4 32 0M10 6c-4 8-4 24 0 32M22 6c-3 8-3 24 0 32M34 6c4 8 4 24 0 32"></path></svg></div><span>ورودی تصحیح‌شده و سازگار</span></div>
+            <div class="s4-out o3"><canvas id="c4D" width="200" height="140" style="border-radius:14px;"></canvas><span>برآورد عمق / تفاوت دید</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  var W=480,H=330;
+
+  function rr(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function drawCar(ctx,w,h,x,y,scale,body){
+    var cw=w*0.15*scale, ch=h*0.1*scale;
+    ctx.fillStyle=body;
+    rr(ctx,x,y,cw,ch,ch*0.35); ctx.fill();
+    ctx.fillStyle='#DCEAF2';
+    rr(ctx,x+cw*0.16,y-ch*0.55,cw*0.5,ch*0.6,ch*0.18); ctx.fill();
+    ctx.fillStyle='#221f1d';
+    ctx.beginPath(); ctx.arc(x+cw*0.2,y+ch,ch*0.34,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+cw*0.82,y+ch,ch*0.34,0,7); ctx.fill();
+    ctx.fillStyle='#E4533A';
+    ctx.fillRect(x+cw*0.94,y+ch*0.18,cw*0.06,ch*0.28);
+    ctx.fillStyle='#FFE7A3';
+    ctx.fillRect(x-cw*0.02,y+ch*0.18,cw*0.06,ch*0.28);
+  }
+
+  function drawPerson(ctx,w,h,x,y,scale,shirt){
+    var headR=h*0.028*scale, bodyW=h*0.05*scale, bodyH=h*0.11*scale;
+    ctx.fillStyle='#E8B893';
+    ctx.beginPath(); ctx.arc(x,y-bodyH-headR,headR,0,7); ctx.fill();
+    ctx.fillStyle=shirt;
+    rr(ctx,x-bodyW/2,y-bodyH,bodyW,bodyH*0.62,bodyW*0.3); ctx.fill();
+    ctx.fillStyle='#39393c';
+    rr(ctx,x-bodyW/2,y-bodyH*0.38,bodyW,bodyH*0.38,bodyW*0.16); ctx.fill();
+  }
+
+  function drawScene(ctx,w,h,shift){
+    ctx.clearRect(0,0,w,h);
+    var g=ctx.createLinearGradient(0,0,0,h*0.6);
+    g.addColorStop(0,'#8ecae6'); g.addColorStop(1,'#d8f3ff');
+    ctx.fillStyle=g; ctx.fillRect(0,0,w,h*0.6);
+    ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.arc(w*0.78+shift*0.2,h*0.16,w*0.045,0,7); ctx.fill();
+
+    ctx.fillStyle='#6b7280'; ctx.fillRect(0,h*0.6,w,h*0.4);
+    ctx.fillStyle='#8b93a0'; ctx.fillRect(0,h*0.6,w,h*0.045);
+    ctx.fillStyle='#8b93a0'; ctx.fillRect(0,h*0.95,w,h*0.05);
+
+    ctx.strokeStyle='#fefefe'; ctx.lineWidth=Math.max(1,w*0.01); ctx.setLineDash([w*0.028,w*0.028]);
+    ctx.beginPath(); ctx.moveTo(w*0.5+shift,h*0.64); ctx.lineTo(w*0.5+shift*0.3,h); ctx.stroke();
+    ctx.setLineDash([]);
+
+    for(var i=0;i<3;i++){
+      var x=w*0.08+i*w*0.08+shift, y=h*0.56;
+      ctx.fillStyle='#7a5230'; ctx.fillRect(x-w*0.008,y-h*0.09,w*0.016,h*0.09);
+      ctx.fillStyle='#2f6b3a'; ctx.beginPath(); ctx.arc(x,y-h*0.12,w*0.035,0,7); ctx.fill();
+    }
+
+    ctx.fillStyle='#4b5563';
+    ctx.fillRect(w-w*0.24+shift*0.5,h*0.3,w*0.08,h*0.32);
+    ctx.fillRect(w-w*0.14+shift*0.5,h*0.38,w*0.06,h*0.24);
+
+    drawCar(ctx,w,h,w*0.34+shift*0.6,h*0.75,1,'#B0463F');
+    drawPerson(ctx,w,h,w*0.13+shift,h*0.94,1,'#4C7EA8');
+    drawPerson(ctx,w,h,w*0.63+shift*0.8,h*0.92,0.85,'#C9793E');
+  }
+
+  function toPlanes(id,w,h){
+    var d=id.data, n=w*h;
+    var Y=new Uint8ClampedArray(n), U=new Uint8ClampedArray(n), V=new Uint8ClampedArray(n);
+    for(var i=0;i<n;i++){
+      var r=d[i*4],gg=d[i*4+1],b=d[i*4+2];
+      Y[i]=0.299*r+0.587*gg+0.114*b;
+      U[i]=-0.14713*r-0.28886*gg+0.436*b+128;
+      V[i]=0.615*r-0.51499*gg-0.10001*b+128;
+    }
+    return {Y:Y,U:U,V:V};
+  }
+  function makeChannelCanvas(arr,w,h,mode){
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    var ctx=c.getContext('2d');
+    var out=ctx.createImageData(w,h);
+    for(var i=0;i<w*h;i++){
+      var v=arr[i];
+      if(mode==='gray'){ out.data[i*4]=v; out.data[i*4+1]=v; out.data[i*4+2]=v; }
+      else if(mode==='blue'){ out.data[i*4]=30; out.data[i*4+1]=50; out.data[i*4+2]=v; }
+      else if(mode==='red'){ out.data[i*4]=v; out.data[i*4+1]=30; out.data[i*4+2]=50; }
+      else { out.data[i*4]=v; out.data[i*4+1]=v*0.55; out.data[i*4+2]=30; }
+      out.data[i*4+3]=255;
+    }
+    ctx.putImageData(out,0,0);
+    return c;
+  }
+  function makeDepthCanvas(Yarr,Darr,w,h){
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    var ctx=c.getContext('2d');
+    var out=ctx.createImageData(w,h);
+    for(var i=0;i<w*h;i++){
+      var y=Yarr[i]*0.22, d=Darr[i];
+      out.data[i*4]=Math.min(255, y+d);
+      out.data[i*4+1]=Math.min(255, y*0.8+d*0.55);
+      out.data[i*4+2]=28+y*0.35;
+      out.data[i*4+3]=255;
+    }
+    ctx.putImageData(out,0,0);
+    return c;
+  }
+  function blit(fromCanvas,toCanvas){
+    var tctx=toCanvas.getContext('2d');
+    tctx.imageSmoothingEnabled=true;
+    tctx.drawImage(fromCanvas,0,0,toCanvas.width,toCanvas.height);
+  }
+
+  var offL=document.createElement('canvas'); offL.width=W; offL.height=H;
+  var ctxL=offL.getContext('2d'); drawScene(ctxL,W,H,0);
+  var offR=document.createElement('canvas'); offR.width=W; offR.height=H;
+  var ctxR=offR.getContext('2d'); drawScene(ctxR,W,H,16);
+
+  var planesL=toPlanes(ctxL.getImageData(0,0,W,H),W,H);
+  var planesR=toPlanes(ctxR.getImageData(0,0,W,H),W,H);
+  var diff=new Uint8ClampedArray(W*H);
+  for(var i=0;i<W*H;i++){ diff[i]=Math.min(255,Math.abs(planesL.Y[i]-planesR.Y[i])*6); }
+
+  blit(offL, document.getElementById('c1L'));
+  blit(offR, document.getElementById('c1R'));
+  blit(offL, document.getElementById('c2In'));
+
+  blit(makeChannelCanvas(planesL.Y,W,H,'gray'), document.getElementById('c2Y'));
+  blit(makeChannelCanvas(planesL.U,W,H,'blue'), document.getElementById('c2U'));
+  blit(makeChannelCanvas(planesL.V,W,H,'red'), document.getElementById('c2V'));
+
+  blit(makeChannelCanvas(planesL.Y,W,H,'gray'), document.getElementById('c3Y'));
+  blit(makeChannelCanvas(planesL.U,W,H,'blue'), document.getElementById('c3U'));
+  blit(makeChannelCanvas(planesL.V,W,H,'red'), document.getElementById('c3V'));
+
+  blit(makeChannelCanvas(planesL.Y,W,H,'gray'), document.getElementById('c4L'));
+  blit(makeChannelCanvas(planesR.Y,W,H,'gray'), document.getElementById('c4R'));
+  blit(makeDepthCanvas(planesL.Y,diff,W,H), document.getElementById('c4D'));
+
+  var panels = Array.prototype.slice.call(document.querySelectorAll('.yp-panel'));
+  var locked = null;
+
+  function setState(activeStage){
+    panels.forEach(function(p){
+      var st = p.getAttribute('data-stage');
+      if(activeStage === null){
+        p.classList.remove('expanded','collapsed');
+      } else if(st === activeStage){
+        p.classList.add('expanded'); p.classList.remove('collapsed');
+      } else {
+        p.classList.remove('expanded'); p.classList.add('collapsed');
+      }
+    });
+  }
+
+  panels.forEach(function(p){
+    var st = p.getAttribute('data-stage');
+    p.addEventListener('mouseenter', function(){ if(!locked) setState(st); });
+    p.addEventListener('mouseleave', function(){ if(!locked) setState(null); });
+    p.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      if(locked === st){ locked = null; setState(null); }
+      else { locked = st; setState(st); }
+    });
+  });
+  document.addEventListener('click', function(){ locked = null; setState(null); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Depth Accuracy — Interactive</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:        #FAF6F0;
+  --bg2:       #EEE7DE;
+  --bg3:       #E7DED4;
+  --border:    #D8CABD;
+  --text:      #463F3A;
+  --muted:     #6B625B;
+  --faint:     #97918C;
+  --primary:   #7D9D9C;
+  --secondary: #C9A27E;
+  --accent:    #B7A99A;
+  --good:      #87986A;
+  --marginal:  #C98245;
+  --bad:       #A44A3F;
+  --grid:      #E8DDD2;
+  --font:      'DM Sans', -apple-system, sans-serif;
+  --mono:      'DM Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+  background: var(--bg);
+  font-family: var(--font);
+  color: var(--text);
+  font-size: 13px;
+}
+
+#app { display: flex; flex-direction: column; height: 100vh; padding: 12px; gap: 10px; }
+#main-row { display: flex; flex: 1; gap: 10px; min-height: 0; }
+#left { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; }
+#plot-title { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: .03em; padding: 0 4px 6px; }
+#main-plot { flex: 1; min-height: 0; }
+
+#right { width: 236px; display: flex; flex-direction: column; gap: 8px; }
+.tile { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+.tile-lbl { font-size: 10px; font-weight: 500; color: var(--faint); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
+.tile-val { font-size: 24px; font-weight: 500; line-height: 1.1; font-family: var(--mono); }
+
+#stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.stat-cell .stat-lbl { font-size: 9.5px; font-weight: 500; color: var(--faint); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
+.stat-cell .stat-val { font-size: 17px; font-weight: 500; font-family: var(--mono); color: var(--text); }
+
+#tile-pie { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#pie-wrap { flex: 1; min-height: 100px; position: relative; }
+
+#controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding: 2px 0; }
+.ctrl-btn {
+  background: transparent; border: 0.5px solid var(--border); border-radius: 6px;
+  padding: 4px 11px; font-size: 12px; font-family: var(--font);
+  color: var(--text); cursor: pointer; white-space: nowrap; transition: background .12s;
+}
+.ctrl-btn:hover { background: var(--bg2); }
+.ctrl-btn:active { background: var(--bg3); }
+
+#pb-wrap { flex: 1; height: 5px; background: var(--border); border-radius: 3px; cursor: pointer; position: relative; }
+#pb { height: 100%; background: var(--primary); border-radius: 3px; width: 0%; pointer-events: none; transition: width .04s linear; }
+#pb-thumb {
+  position: absolute; top: 50%; right: calc(100% - 100%); width: 10px; height: 10px;
+  background: var(--primary); border-radius: 50%; transform: translateY(-50%);
+  transition: opacity .2s; opacity: 0; pointer-events: none;
+}
+#pb-wrap:hover #pb-thumb { opacity: 1; }
+#spd-lbl { font-size: 11px; color: var(--muted); min-width: 30px; text-align: center; font-family: var(--mono); }
+
+#hover-badge {
+  position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+  background: var(--bg2); border: 0.5px solid var(--border); border-radius: 20px;
+  padding: 4px 14px; font-size: 11px; color: var(--muted);
+  opacity: 0; transition: opacity .4s; pointer-events: none; white-space: nowrap;
+}
+#hover-badge.show { opacity: 1; }
+
+#sample-counter { position: absolute; top: 8px; right: 8px; font-size: 10px; font-family: var(--mono); color: var(--faint); pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="main-row">
+
+    <div id="left">
+      <div id="plot-title">Stereo Depth Accuracy</div>
+      <div id="main-plot"></div>
+      <div id="hover-badge">hover over any point to inspect</div>
+      <div id="sample-counter"></div>
+    </div>
+
+    <div id="right">
+      <div class="tile">
+        <div class="tile-lbl">Points</div>
+        <div class="tile-val" id="v-n">—</div>
+      </div>
+      <div class="tile">
+        <div class="tile-lbl">Live metrics</div>
+        <div id="stat-grid">
+          <div class="stat-cell"><div class="stat-lbl">MAE</div><div class="stat-val" id="v-mae">—</div></div>
+          <div class="stat-cell"><div class="stat-lbl">RMSE</div><div class="stat-val" id="v-rmse">—</div></div>
+          <div class="stat-cell"><div class="stat-lbl">MAPE</div><div class="stat-val" id="v-mape">—</div></div>
+          <div class="stat-cell"><div class="stat-lbl">Bias</div><div class="stat-val" id="v-bias">—</div></div>
+          <div class="stat-cell" style="grid-column: 1 / span 2;"><div class="stat-lbl">Coverage</div><div class="stat-val" id="v-cov">—</div></div>
+        </div>
+      </div>
+      <div class="tile" id="tile-pie">
+        <div class="tile-lbl">Quality distribution</div>
+        <div id="pie-wrap"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="controls">
+    <button class="ctrl-btn" id="btn-play">⏸ Pause</button>
+    <div id="pb-wrap">
+      <div id="pb"></div>
+      <div id="pb-thumb"></div>
+    </div>
+    <button class="ctrl-btn" id="btn-slower">−</button>
+    <span id="spd-lbl">1×</span>
+    <button class="ctrl-btn" id="btn-faster">+</button>
+    <button class="ctrl-btn" id="btn-restart">↺ Restart</button>
+  </div>
+</div>
+
+<script>
+/* ── data ─────────────────────────────────────────────────────────────────── */
+const D = {"points":[{"t":0.48,"m":0.4715,"em":-0.0085,"ep":-1.77,"std":0.2344,"cov":98.8,"q":"MARGINAL"},{"t":0.65,"m":0.5768,"em":-0.0732,"ep":-11.26,"std":1.1399,"cov":76.9,"q":"UNRELIABLE"},{"t":0.78,"m":0.7599,"em":-0.0201,"ep":-2.58,"std":0.006,"cov":100.0,"q":"GOOD"},{"t":0.9,"m":0.8875,"em":-0.0125,"ep":-1.38,"std":0.0067,"cov":100.0,"q":"GOOD"},{"t":1.12,"m":1.0501,"em":-0.0699,"ep":-6.25,"std":17.5485,"cov":68.3,"q":"UNRELIABLE"},{"t":1.63,"m":1.5936,"em":-0.0364,"ep":-2.23,"std":1.6019,"cov":99.7,"q":"UNRELIABLE"},{"t":1.65,"m":1.6379,"em":-0.0121,"ep":-0.73,"std":0.0128,"cov":100.0,"q":"GOOD"},{"t":1.85,"m":1.7804,"em":-0.0696,"ep":-3.76,"std":0.8973,"cov":99.9,"q":"UNRELIABLE"},{"t":1.92,"m":1.8092,"em":-0.1108,"ep":-5.77,"std":0.0233,"cov":100.0,"q":"GOOD"},{"t":2.09,"m":2.1464,"em":0.0564,"ep":2.7,"std":14.4659,"cov":98.8,"q":"UNRELIABLE"},{"t":2.12,"m":2.1831,"em":0.0631,"ep":2.98,"std":0.0079,"cov":100.0,"q":"GOOD"},{"t":2.16,"m":2.0423,"em":-0.1177,"ep":-5.45,"std":25.784,"cov":99.1,"q":"UNRELIABLE"},{"t":2.25,"m":2.4288,"em":0.1788,"ep":7.95,"std":0.0594,"cov":100.0,"q":"GOOD"},{"t":2.59,"m":2.6607,"em":0.0707,"ep":2.73,"std":0.0739,"cov":100.0,"q":"GOOD"},{"t":2.8,"m":2.8653,"em":0.0653,"ep":2.33,"std":0.0153,"cov":100.0,"q":"GOOD"},{"t":3.06,"m":3.2188,"em":0.1588,"ep":5.19,"std":4.3483,"cov":98.5,"q":"UNRELIABLE"},{"t":3.49,"m":3.3864,"em":-0.1036,"ep":-2.97,"std":0.1161,"cov":100.0,"q":"GOOD"},{"t":3.7,"m":3.7249,"em":0.0249,"ep":0.67,"std":0.0124,"cov":100.0,"q":"GOOD"},{"t":3.72,"m":3.7265,"em":0.0065,"ep":0.17,"std":2.2767,"cov":98.9,"q":"UNRELIABLE"},{"t":5.2,"m":5.2601,"em":0.0601,"ep":1.16,"std":9.6158,"cov":80.2,"q":"UNRELIABLE"}],"smoothed":[-6.515,-5.2033,-5.0733,-3.4033,-3.2867,-3.07,-2.24,-3.42,-2.2767,-0.03,0.0767,1.8267,1.7433,4.3367,3.4167,1.5167,0.9633,-0.71,0.6667,0.665],"groups":[{"key":"GOOD","label":"Good","color":"#87986A"},{"key":"MARGINAL","label":"Marginal","color":"#C98245"},{"key":"UNRELIABLE","label":"Unreliable","color":"#B7A99A"}],"limMin":0.271,"limMax":5.56,"errYRange":[-13.57,10.26],"final":{"n":20,"mae":0.0659,"rmse":0.0812,"mape":3.5015,"bias":0.0025,"coverage":95.955},"total":20};
+
+/* ── constants ───────────────────────────────────────────────────────────── */
+const COLORS = {
+  bg: '#FAF6F0', grid: '#E8DDD2', text: '#463F3A', tick: '#6B625B', edge: '#D8CABD', paper: '#FAF6F0',
+  primary: '#7D9D9C', secondary: '#C9A27E', accent: '#B7A99A',
+  good: '#87986A', marginal: '#C98245', bad: '#A44A3F',
+  band10: 'rgba(125,157,156,0.1)', band5: 'rgba(135,152,106,0.1)',
+};
+const SPEEDS  = [0.25, 0.5, 1, 2, 4, 8];
+const ANIM_MS = 9000;
+const TOTAL   = D.total;
+
+/* trace layout: 0 ideal, 1 band10, 2 band5, 3 errorbars,
+   4..4+G-1 top group markers, 4+G..4+2G-1 bottom group markers, last: smoothed line */
+const G = D.groups.length;
+const TOP_START    = 4;
+const BOTTOM_START = 4 + G;
+const SMOOTH_IDX   = 4 + 2 * G;
+
+/* ── state ───────────────────────────────────────────────────────────────── */
+let speedIdx  = 2;
+let playing   = true;
+let frame     = 0;
+let startTime = null;
+let animDone  = false;
+
+/* ── layout ──────────────────────────────────────────────────────────────── */
+const TOP_DOMAIN    = [0.46, 0.97];
+const BOTTOM_DOMAIN  = [0.0, 0.28];
+
+const BASE_LAYOUT = {
+  paper_bgcolor: COLORS.bg,
+  plot_bgcolor:  COLORS.bg,
+  font: { family: "'DM Sans', sans-serif", color: COLORS.text, size: 12 },
+  margin: { t: 34, r: 26, b: 42, l: 66 },
+  showlegend: true,
+  legend: {
+    x: 0.985, y: TOP_DOMAIN[0] + 0.01, xanchor: 'right', yanchor: 'bottom',
+    bgcolor: 'rgba(255,253,249,0.92)', bordercolor: COLORS.edge, borderwidth: 1,
+    font: { size: 10 },
+  },
+  xaxis: {
+    title: { text: 'True distance (m)', font: { size: 11.5 } },
+    domain: [0, 1], anchor: 'y',
+    range: [D.limMin, D.limMax],
+    gridcolor: COLORS.grid, linecolor: COLORS.edge, tickcolor: COLORS.text, tickfont: { size: 10.5 },
+  },
+  yaxis: {
+    title: { text: 'Measured distance (m)', font: { size: 11.5 } },
+    domain: TOP_DOMAIN, anchor: 'x',
+    range: [D.limMin, D.limMax], scaleanchor: 'x', scaleratio: 1,
+    gridcolor: COLORS.grid, linecolor: COLORS.edge, tickcolor: COLORS.text, tickfont: { size: 10.5 },
+  },
+  xaxis2: {
+    title: { text: 'True distance (m)', font: { size: 11.5 } },
+    domain: [0, 1], anchor: 'y2',
+    range: [D.limMin, D.limMax],
+    gridcolor: COLORS.grid, linecolor: COLORS.edge, tickcolor: COLORS.text, tickfont: { size: 10.5 },
+  },
+  yaxis2: {
+    title: { text: 'Error (%)', font: { size: 11.5 } },
+    domain: BOTTOM_DOMAIN, anchor: 'x2',
+    range: D.errYRange,
+    gridcolor: COLORS.grid, linecolor: COLORS.edge, tickcolor: COLORS.text, tickfont: { size: 10.5 },
+    zeroline: false,
+  },
+  shapes: [
+    { type: 'line', xref: 'x2', yref: 'y2', x0: D.limMin, x1: D.limMax, y0: 0, y1: 0,
+       line: { color: COLORS.tick, width: 1.0 }, opacity: 0.65 },
+  ],
+  annotations: [
+    { x: 0.5, y: 1.045, xref: 'paper', yref: 'paper', xanchor: 'center', yanchor: 'bottom',
+       text: 'Stereo Depth Accuracy — Measured vs True Distance', showarrow: false,
+       font: { size: 13.5, color: COLORS.text, family: "'DM Sans', sans-serif" } },
+    { x: 0.5, y: BOTTOM_DOMAIN[1] + 0.045, xref: 'paper', yref: 'paper', xanchor: 'center', yanchor: 'bottom',
+       text: 'Signed Relative Error Across Test Distances', showarrow: false,
+       font: { size: 12, color: COLORS.text, family: "'DM Sans', sans-serif" } },
+  ],
+  hovermode: 'closest',
+  hoverlabel: { bgcolor: COLORS.paper, bordercolor: COLORS.edge, font: { family: "'DM Mono', monospace", size: 11, color: COLORS.text } },
+};
+
+/* ── static reference traces (built once) ───────────────────────────────── */
+function refTraces() {
+  return [
+    { name: 'Ideal measurement', x: [D.limMin, D.limMax], y: [D.limMin, D.limMax],
+       mode: 'lines', type: 'scatter', xaxis: 'x', yaxis: 'y',
+       line: { color: COLORS.tick, width: 1.2, dash: 'dash' }, opacity: 0.7, hoverinfo: 'skip' },
+    { name: '±0.10 m band', x: [D.limMin, D.limMax, D.limMax, D.limMin],
+       y: [D.limMin - 0.10, D.limMax - 0.10, D.limMax + 0.10, D.limMin + 0.10],
+       mode: 'lines', type: 'scatter', xaxis: 'x', yaxis: 'y',
+       fill: 'toself', fillcolor: COLORS.band10, line: { width: 0 }, hoverinfo: 'skip' },
+    { name: '±5% band', x: [D.limMin, D.limMax, D.limMax, D.limMin], y: [-5, -5, 5, 5],
+       mode: 'lines', type: 'scatter', xaxis: 'x2', yaxis: 'y2',
+       fill: 'toself', fillcolor: COLORS.band5, line: { width: 0 }, hoverinfo: 'skip' },
+    { name: 'Depth std', x: [], y: [], xaxis: 'x', yaxis: 'y',
+       mode: 'markers', type: 'scatter', showlegend: false, hoverinfo: 'skip',
+       marker: { size: 0, color: 'rgba(0,0,0,0)' },
+       error_y: { type: 'data', array: [], visible: true, color: COLORS.accent, thickness: 0.9, width: 4, opacity: 0.55 } },
+  ];
+}
+
+/* ── DOM helpers ─────────────────────────────────────────────────────────── */
+function fmt(v, dec) {
+  if (v === null || v === undefined) return '—';
+  const n = Number(v);
+  if (!isFinite(n)) return '—';
+  return n.toFixed(dec !== undefined ? dec : 1);
+}
+function fmtSigned(v, dec) {
+  if (v === null || v === undefined) return '—';
+  const n = Number(v);
+  if (!isFinite(n)) return '—';
+  return (n >= 0 ? '+' : '') + n.toFixed(dec !== undefined ? dec : 1);
+}
+
+function updateTiles(stats) {
+  document.getElementById('v-n').textContent    = `${stats.n} / ${TOTAL}`;
+  document.getElementById('v-mae').textContent  = stats.n ? fmt(stats.mae, 3) + ' m' : '—';
+  document.getElementById('v-rmse').textContent = stats.n ? fmt(stats.rmse, 3) + ' m' : '—';
+  document.getElementById('v-mape').textContent = stats.n ? fmt(stats.mape, 2) + '%' : '—';
+  document.getElementById('v-bias').textContent = stats.n ? fmtSigned(stats.bias, 3) + ' m' : '—';
+  document.getElementById('v-cov').textContent  = (stats.covCount ? fmt(stats.sumCov / stats.covCount, 1) + '%' : '—');
+  document.getElementById('sample-counter').textContent = `${stats.n} / ${TOTAL}`;
+}
+
+const PIE_LAYOUT = { paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { t: 4, r: 4, b: 4, l: 4 }, showlegend: false };
+
+function pieTrace(counts) {
+  const labels = D.groups.map(g => g.label);
+  const colors = D.groups.map(g => g.color);
+  const values = D.groups.map(g => counts[g.key] || 0);
+  const total  = values.reduce((a, b) => a + b, 0);
+  return [{
+    type: 'pie', values: total ? values : D.groups.map(() => 1), labels: labels,
+    marker: { colors: colors }, hole: 0.44, textinfo: total ? 'percent' : 'none',
+    textfont: { size: 10, color: COLORS.text, family: "'DM Sans', sans-serif" },
+    sort: false, direction: 'clockwise',
+    hovertemplate: '%{label}: %{value} pts (%{percent})<extra></extra>',
+  }];
+}
+
+Plotly.newPlot('pie-wrap', pieTrace({}), PIE_LAYOUT, { displayModeBar: false, responsive: true });
+Plotly.newPlot('main-plot', refTraces(), BASE_LAYOUT, {
+  responsive: true, displaylogo: false,
+  modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d'],
+});
+
+/* ── core render: rebuild everything up to (and including) index idx ────── */
+function renderUpTo(idx) {
+  const eb = { x: [], y: [], err: [] };
+  const top = {}, bottom = {};
+  for (const g of D.groups) { top[g.key] = { x: [], y: [] }; bottom[g.key] = { x: [], y: [] }; }
+  const sm = { x: [], y: [] };
+
+  let n = 0, sumAbsEm = 0, sumSqEm = 0, sumAbsEp = 0, sumEm = 0, sumCov = 0, covCount = 0;
+  const counts = {};
+
+  for (let i = 0; i <= idx; i++) {
+    const p = D.points[i];
+    eb.x.push(p.t); eb.y.push(p.m); eb.err.push(p.std);
+    top[p.q].x.push(p.t); top[p.q].y.push(p.m);
+    bottom[p.q].x.push(p.t); bottom[p.q].y.push(p.ep);
+    if (D.smoothed[i] !== null) { sm.x.push(p.t); sm.y.push(D.smoothed[i]); }
+
+    if (p.em !== null) { sumAbsEm += Math.abs(p.em); sumSqEm += p.em * p.em; sumEm += p.em; }
+    if (p.ep !== null) { sumAbsEp += Math.abs(p.ep); }
+    if (p.cov !== null) { sumCov += p.cov; covCount++; }
+    counts[p.q] = (counts[p.q] || 0) + 1;
+    n++;
+  }
+
+  const traces = refTraces();
+  traces[3].x = eb.x; traces[3].y = eb.y; traces[3].error_y.array = eb.err;
+
+  D.groups.forEach((g, gi) => {
+    traces.push({
+      name: g.label, x: top[g.key].x, y: top[g.key].y, xaxis: 'x', yaxis: 'y',
+      mode: 'markers', type: 'scatter', showlegend: true,
+      marker: { color: g.color, size: 9, opacity: 0.92, line: { color: COLORS.paper, width: 1.0 } },
+      hovertemplate: `${g.label}<br>true=%{x:.2f} m<br>measured=%{y:.2f} m<extra></extra>`,
+    });
+  });
+  D.groups.forEach((g, gi) => {
+    traces.push({
+      name: g.label, x: bottom[g.key].x, y: bottom[g.key].y, xaxis: 'x2', yaxis: 'y2',
+      mode: 'markers', type: 'scatter', showlegend: false,
+      marker: { color: g.color, size: 8, opacity: 0.92, line: { color: COLORS.paper, width: 0.9 } },
+      hovertemplate: `${g.label}<br>true=%{x:.2f} m<br>error=%{y:.2f}%<extra></extra>`,
+    });
+  });
+  traces.push({
+    name: 'Smoothed error', x: sm.x, y: sm.y, xaxis: 'x2', yaxis: 'y2',
+    mode: 'lines', type: 'scatter',
+    line: { color: COLORS.secondary, width: 2.3 }, hoverinfo: 'skip',
+  });
+
+  const layout = { ...BASE_LAYOUT, annotations: [...BASE_LAYOUT.annotations] };
+  if (idx >= TOTAL - 1) {
+    const f = D.final;
+    layout.annotations = [...layout.annotations, {
+      x: 0.015, y: TOP_DOMAIN[1] - 0.01, xref: 'paper', yref: 'paper', xanchor: 'left', yanchor: 'top',
+      align: 'left', showarrow: false,
+      text: `n = ${f.n}<br>MAE = ${fmt(f.mae, 3)} m<br>RMSE = ${fmt(f.rmse, 3)} m<br>MAPE = ${fmt(f.mape, 2)}%<br>Bias = ${fmtSigned(f.bias, 3)} m<br>Coverage = ${fmt(f.coverage, 1)}%`,
+      font: { size: 10.5, color: COLORS.text, family: "'DM Mono', monospace" },
+      bgcolor: COLORS.paper, bordercolor: COLORS.edge, borderwidth: 0.9, borderpad: 6,
+    }];
+  }
+
+  Plotly.react('main-plot', traces, layout);
+  Plotly.react('pie-wrap', pieTrace(counts), PIE_LAYOUT, { displayModeBar: false, responsive: true });
+  updateTiles({ n, mae: sumAbsEm / n, rmse: Math.sqrt(sumSqEm / n), mape: sumAbsEp / n, bias: sumEm / n, sumCov, covCount });
+
+  const pct = (idx / (TOTAL - 1)) * 100;
+  document.getElementById('pb').style.width = pct + '%';
+  document.getElementById('pb-thumb').style.left = `calc(${pct}% - 5px)`;
+}
+
+/* ── hover (post-animation) ──────────────────────────────────────────────── */
+function closestIndex(t) {
+  let lo = 0, hi = D.points.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (D.points[mid].t < t) lo = mid + 1; else hi = mid;
+  }
+  return lo;
+}
+
+function setupHover() {
+  document.getElementById('main-plot').on('plotly_hover', function(evt) {
+    const pt = evt.points[0];
+    if (pt.curveNumber < TOP_START || pt.curveNumber === SMOOTH_IDX) return;
+    const idx = closestIndex(pt.x);
+    let n = 0, sumAbsEm = 0, sumSqEm = 0, sumAbsEp = 0, sumEm = 0, sumCov = 0, covCount = 0;
+    for (let i = 0; i <= idx; i++) {
+      const p = D.points[i];
+      if (p.em !== null) { sumAbsEm += Math.abs(p.em); sumSqEm += p.em * p.em; sumEm += p.em; }
+      if (p.ep !== null) { sumAbsEp += Math.abs(p.ep); }
+      if (p.cov !== null) { sumCov += p.cov; covCount++; }
+      n++;
+    }
+    updateTiles({ n, mae: sumAbsEm / n, rmse: Math.sqrt(sumSqEm / n), mape: sumAbsEp / n, bias: sumEm / n, sumCov, covCount });
+  });
+}
+
+/* ── animation ───────────────────────────────────────────────────────────── */
+function targetFrame(elapsed) {
+  const dur = ANIM_MS / SPEEDS[speedIdx];
+  return Math.min(TOTAL - 1, Math.floor((elapsed / dur) * TOTAL));
+}
+
+function animStep(ts) {
+  if (!playing) return;
+  if (!startTime) startTime = ts;
+  const target = targetFrame(ts - startTime);
+  if (target === frame) { requestAnimationFrame(animStep); return; }
+  frame = target;
+  renderUpTo(frame);
+
+  if (frame >= TOTAL - 1) {
+    animDone = true; playing = false;
+    document.getElementById('btn-play').textContent = '▶ Play';
+    document.getElementById('hover-badge').classList.add('show');
+    setupHover();
+    return;
+  }
+  requestAnimationFrame(animStep);
+}
+
+/* ── controls ────────────────────────────────────────────────────────────── */
+document.getElementById('btn-play').addEventListener('click', () => {
+  if (animDone) return;
+  playing = !playing;
+  document.getElementById('btn-play').textContent = playing ? '⏸ Pause' : '▶ Play';
+  if (playing) {
+    const elapsed = (frame / (TOTAL - 1)) * (ANIM_MS / SPEEDS[speedIdx]);
+    startTime = performance.now() - elapsed;
+    requestAnimationFrame(animStep);
+  }
+});
+
+document.getElementById('btn-slower').addEventListener('click', () => {
+  if (speedIdx === 0) return;
+  const elapsed = (frame / (TOTAL - 1)) * (ANIM_MS / SPEEDS[speedIdx]);
+  speedIdx--;
+  document.getElementById('spd-lbl').textContent = SPEEDS[speedIdx] + '×';
+  if (playing) startTime = performance.now() - (frame / (TOTAL - 1)) * (ANIM_MS / SPEEDS[speedIdx]);
+});
+
+document.getElementById('btn-faster').addEventListener('click', () => {
+  if (speedIdx === SPEEDS.length - 1) return;
+  speedIdx++;
+  document.getElementById('spd-lbl').textContent = SPEEDS[speedIdx] + '×';
+  if (playing) startTime = performance.now() - (frame / (TOTAL - 1)) * (ANIM_MS / SPEEDS[speedIdx]);
+});
+
+document.getElementById('btn-restart').addEventListener('click', () => {
+  playing = false; animDone = false;
+  frame = 0; startTime = null;
+  document.getElementById('hover-badge').classList.remove('show');
+  document.getElementById('btn-play').textContent = '⏸ Pause';
+  document.getElementById('pb').style.width = '0%';
+  Plotly.react('main-plot', refTraces(), BASE_LAYOUT);
+  Plotly.react('pie-wrap', pieTrace({}), PIE_LAYOUT, { displayModeBar: false, responsive: true });
+  ['v-n', 'v-mae', 'v-rmse', 'v-mape', 'v-bias', 'v-cov'].forEach(id => { document.getElementById(id).textContent = '—'; });
+  document.getElementById('sample-counter').textContent = '';
+  setTimeout(() => { playing = true; requestAnimationFrame(animStep); }, 80);
+});
+
+document.getElementById('pb-wrap').addEventListener('click', function(e) {
+  const pct = Math.max(0, Math.min(1, e.offsetX / this.offsetWidth));
+  const targetIdx = Math.round(pct * (TOTAL - 1));
+  playing = false;
+  document.getElementById('btn-play').textContent = '▶ Play';
+  frame = targetIdx;
+  renderUpTo(frame);
+  if (targetIdx >= TOTAL - 1) {
+    animDone = true;
+    document.getElementById('hover-badge').classList.add('show');
+    setupHover();
+  } else {
+    animDone = false;
+  }
+});
+
+/* ── kick off ────────────────────────────────────────────────────────────── */
+requestAnimationFrame(animStep);
+</script>
+</body>
+</html>

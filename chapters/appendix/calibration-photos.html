@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>عکس‌های کالیبراسیون — نقشه‌راه</title>
+<meta name="tile-subtitle" content="مجموعه تصاویر کالیبراسیون دوربین استریو و حسگرها">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body data-page="photo-gallery" class="has-texture">
+
+  <header id="topbar">
+    <a class="icon-btn" href="../" aria-label="بازگشت به فهرست">
+      <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+    <div class="crumb">
+      <span class="crumb-root">نقشه‌راه</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-current" id="crumb-current"></span>
+    </div>
+    <span id="photo-count" class="topbar-count"></span>
+  </header>
+
+  <main id="chapter-main">
+    <p id="gallery-blurb" style="font-size:13px; color:var(--muted); margin:2px 0 26px; max-width:640px; line-height:1.8;"></p>
+
+    <div id="loading-chapter" class="loading-chapter">
+      <span class="spinner"></span>
+      <span>در حال بارگذاری تصاویر…</span>
+    </div>
+
+    <div id="photo-grid" class="photo-grid" style="display:none;"></div>
+
+    <div id="empty-chapter" class="empty-chapter">
+      <svg viewBox="0 0 120 80" class="empty-route" aria-hidden="true">
+        <path d="M8 62 C 28 62, 28 34, 48 34 S 68 8, 88 8 S 108 8, 112 8" stroke-dasharray="4 6"/>
+        <circle cx="8" cy="62" r="4"/><circle cx="48" cy="34" r="3.2"/><circle cx="88" cy="8" r="3.2"/>
+      </svg>
+      <h2>هنوز عکسی اضافه نشده</h2>
+      <p>تصاویر را در پوشهٔ کنار این صفحه (هم‌نام با آن) قرار دهید.</p>
+    </div>
+
+    <div id="error-chapter" class="empty-chapter error-chapter">
+      <svg viewBox="0 0 120 80" class="empty-route" aria-hidden="true">
+        <path d="M8 62 C 28 62, 28 34, 48 34 S 68 8, 88 8 S 108 8, 112 8" stroke-dasharray="4 6"/>
+        <circle cx="8" cy="62" r="4"/><circle cx="48" cy="34" r="3.2"/><circle cx="88" cy="8" r="3.2"/>
+      </svg>
+      <h2>فهرست تصاویر بارگذاری نشد</h2>
+      <p></p>
+    </div>
+  </main>
+
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightbox-close" aria-label="بستن">
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6l-12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <button class="lightbox-prev" id="lightbox-prev" aria-label="تصویر قبلی">
+      <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <img id="lightbox-img" src="" alt="">
+    <button class="lightbox-next" id="lightbox-next" aria-label="تصویر بعدی">
+      <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <span class="lightbox-count" id="lightbox-count"></span>
+  </div>
+
+<script src="../../data.js"></script>
+<script src="../../discover.js"></script>
+<script>
+(function(){
+  function toFa(n){
+    const map = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+    return String(n).replace(/\d/g, d => map[d]);
+  }
+
+  /* This page always lives at chapters/<chapterId>/<slug>.html, and its
+     images live in chapters/<chapterId>/<slug>/ — both are derived from
+     the page's own URL, so this exact file can be copied for any new
+     photo album with zero edits: just rename it and add the matching
+     image folder. */
+  const parts = location.pathname.split('/').filter(Boolean);
+  const filename = parts[parts.length - 1] || '';
+  const slug = filename.replace(/\.html?$/i, '');
+  const chapterId = parts[parts.length - 2];
+  const folderPath = `chapters/${chapterId}/${slug}`;
+
+  const pageTitle = document.querySelector('title').textContent.split(' — ')[0];
+  document.getElementById('crumb-current').textContent = pageTitle;
+  document.getElementById('gallery-blurb').textContent =
+    (document.querySelector('meta[name="tile-subtitle"]') || {}).content || '';
+
+  const loadingEl = document.getElementById('loading-chapter');
+  const emptyEl = document.getElementById('empty-chapter');
+  const errorEl = document.getElementById('error-chapter');
+  const gridEl = document.getElementById('photo-grid');
+
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightbox-img');
+  const lightboxCount = document.getElementById('lightbox-count');
+  let photos = [];
+  let current = 0;
+
+  function updateLightbox(){
+    lightboxImg.src = `${slug}/${photos[current]}`;
+    lightboxCount.textContent = `${toFa(current + 1)} / ${toFa(photos.length)}`;
+  }
+  function openLightbox(i){ current = i; updateLightbox(); lightbox.classList.add('open'); }
+  function closeLightbox(){ lightbox.classList.remove('open'); }
+  function next(){ current = (current + 1) % photos.length; updateLightbox(); }
+  function prev(){ current = (current - 1 + photos.length) % photos.length; updateLightbox(); }
+
+  document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
+  document.getElementById('lightbox-next').addEventListener('click', next);
+  document.getElementById('lightbox-prev').addEventListener('click', prev);
+  lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
+  document.addEventListener('keydown', (e) => {
+    if (!lightbox.classList.contains('open')) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') next();
+    if (e.key === 'ArrowRight') prev();
+  });
+
+  async function load(){
+    try {
+      const entries = await listFolder(folderPath);
+      photos = entries
+        .filter(e => e.type === 'file' && isImageName(e.name))
+        .map(e => e.name)
+        .sort((a, b) => a.localeCompare(b));
+    } catch (err) {
+      loadingEl.style.display = 'none';
+      errorEl.style.display = 'flex';
+      errorEl.querySelector('p').textContent = discoveryErrorMessage(err);
+      return;
+    }
+
+    loadingEl.style.display = 'none';
+    document.getElementById('photo-count').textContent = photos.length ? `${toFa(photos.length)} تصویر` : '';
+
+    if (!photos.length) { emptyEl.style.display = 'flex'; return; }
+
+    gridEl.style.display = 'grid';
+    gridEl.innerHTML = photos.map((name, i) => `
+      <button class="photo-thumb" data-index="${i}" aria-label="نمایش تصویر بزرگ">
+        <img src="${slug}/${name}" alt="" loading="lazy">
+      </button>
+    `).join('');
+    gridEl.querySelectorAll('.photo-thumb').forEach(btn => {
+      btn.addEventListener('click', () => openLightbox(Number(btn.dataset.index)));
+    });
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

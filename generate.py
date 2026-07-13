@@ -83,6 +83,7 @@ CHAPTER_PAGE = """<!DOCTYPE html>
   </main>
 
 <script src="../../data.js"></script>
+<script src="../../discover.js"></script>
 <script src="../../gallery.js"></script>
 </body>
 </html>

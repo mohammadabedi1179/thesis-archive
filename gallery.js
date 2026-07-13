@@ -9,43 +9,15 @@ function toFa(n){
   return String(n).replace(/\d/g, d => map[d]);
 }
 
-/* ── Repo detection ──────────────────────────────────────────── */
-function detectRepo(){
-  if (REPO_OWNER && REPO_NAME) return { owner: REPO_OWNER, repo: REPO_NAME, branch: REPO_BRANCH };
-
-  const host = location.hostname;
-  if (host.endsWith('.github.io')) {
-    const owner = host.split('.')[0];
-    const parts = location.pathname.split('/').filter(Boolean);
-    const repo = parts.length ? parts[0] : `${owner}.github.io`;
-    return { owner, repo, branch: REPO_BRANCH || 'main' };
-  }
-  return null; // not resolvable (local testing, custom domain without config, etc.)
-}
-
-/* ── GitHub API ──────────────────────────────────────────────── */
-const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'];
-
+/* ── GitHub-backed chapter listing (built on discover.js) ──────── */
 async function listChapterFiles(chapterId){
-  const repo = detectRepo();
-  if (!repo) throw new Error('NO_REPO');
-
-  const url = `https://api.github.com/repos/${repo.owner}/${repo.repo}/contents/chapters/${chapterId}?ref=${repo.branch}`;
-  const res = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } });
-
-  if (!res.ok) {
-    if (res.status === 403) throw new Error('RATE_LIMIT');
-    if (res.status === 404) return []; // folder not found yet — treat as empty
-    throw new Error('FETCH_FAILED');
-  }
-
-  const entries = await res.json();
+  const entries = await listFolder(`chapters/${chapterId}`);
 
   const imageByBase = {};
   entries.forEach(e => {
-    if (e.type !== 'file') return;
-    const m = e.name.match(/^(.+)\.([a-zA-Z0-9]+)$/);
-    if (m && IMAGE_EXTS.includes(m[2].toLowerCase())) imageByBase[m[1]] = e.name;
+    if (e.type !== 'file' || !isImageName(e.name)) return;
+    const base = e.name.replace(/\.[a-zA-Z0-9]+$/, '');
+    imageByBase[base] = e.name;
   });
 
   return entries
@@ -98,7 +70,7 @@ async function renderHome(){
   const grid = document.getElementById('chapter-grid');
   if (!grid) return;
 
-  const chapterTiles = CHAPTERS.map(ch => `
+  grid.innerHTML = CHAPTERS.map(ch => `
     <a class="chapter-card is-loading" href="chapters/${ch.id}/" data-chapter="${ch.id}">
       <span class="chapter-tab">${ch.num}</span>
       <span class="chapter-card-title">${ch.title}</span>
@@ -106,17 +78,6 @@ async function renderHome(){
       <span class="chapter-card-count">در حال شمارش…</span>
     </a>`
   ).join('');
-
-  const extraTiles = EXTRA_TILES.map(tile => `
-    <a class="chapter-card is-extra" href="${tile.href}">
-      <span class="chapter-tab">${tile.num}</span>
-      <span class="chapter-card-title">${tile.title}</span>
-      <span class="chapter-card-blurb">${tile.blurb}</span>
-      <span class="chapter-card-count">مشاهدهٔ مستقیم</span>
-    </a>`
-  ).join('');
-
-  grid.innerHTML = chapterTiles + extraTiles;
 
   const results = await Promise.allSettled(CHAPTERS.map(ch => listChapterFiles(ch.id)));
 
@@ -165,10 +126,7 @@ async function renderChapter(chapterId){
   } catch (err) {
     loadingEl.style.display = 'none';
     errorEl.style.display = 'flex';
-    errorEl.querySelector('p').textContent =
-      err.message === 'RATE_LIMIT'
-        ? 'محدودیت تعداد درخواست به GitHub فعال شده — چند دقیقهٔ دیگر دوباره امتحان کنید.'
-        : 'این صفحه هنوز روی GitHub Pages منتشر نشده یا اتصال اینترنت برقرار نیست.';
+    errorEl.querySelector('p').textContent = discoveryErrorMessage(err);
     return;
   }
 

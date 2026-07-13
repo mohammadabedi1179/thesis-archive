@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>نمای سه‌بعدی درخت TF — چرخ‌ها و شاسی</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#1b1c1f; --paper:#242529; --edge:#3a3c42; --text:#e9e6df; --muted:#a9a6a0; --accent:#c9a24a; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; overflow:hidden; background:var(--bg); }
+  body{ font-family:'Vazirmatn',Tahoma,Arial,sans-serif; color:var(--text); }
+  #scene{ position:fixed; inset:0; }
+  .hdr{ position:fixed; top:0; right:0; left:0; z-index:5; text-align:center; padding:18px 20px 8px; pointer-events:none; }
+  .hdr h1{ font-size:18px; font-weight:800; margin:0 0 4px; }
+  .hdr p{ font-size:12px; color:var(--muted); margin:0; font-weight:500; }
+  .legend{
+    position:fixed; top:86px; right:20px; z-index:5; background:var(--paper); border:1.5px solid var(--edge);
+    border-radius:12px; padding:12px 16px; font-size:12px; min-width:150px;
+  }
+  .legend .lt{ font-weight:800; margin-bottom:8px; font-size:12.5px; }
+  .legend .row{ display:flex; align-items:center; gap:8px; padding:3px 0; }
+  .legend .sw{ width:16px; height:3px; border-radius:2px; flex:0 0 auto; }
+  .hint{ position:fixed; bottom:18px; right:0; left:0; z-index:5; text-align:center; font-size:12px; color:var(--muted); font-weight:600; pointer-events:none; }
+  .viewbar{ position:fixed; top:86px; left:20px; z-index:5; display:flex; flex-direction:column; gap:8px; }
+  .viewbar button{
+    font-family:'Vazirmatn',sans-serif; font-size:12.5px; font-weight:700; color:var(--text);
+    background:var(--paper); border:1.5px solid var(--edge); border-radius:10px; padding:8px 14px; cursor:pointer;
+  }
+  .viewbar button.active{ border-color:var(--accent); color:var(--accent); }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div class="hdr">
+  <h1>نمای سه‌بعدی درخت TF</h1>
+  <p>base_link به عنوان ریشه، متصل به chassis و چهار مفصل چرخ</p>
+</div>
+<div class="legend">
+  <div class="lt">راهنما</div>
+  <div class="row"><span class="sw" style="background:#e5484d"></span>محور X</div>
+  <div class="row"><span class="sw" style="background:#4caf50"></span>محور Y</div>
+  <div class="row"><span class="sw" style="background:#4a90d9"></span>محور Z</div>
+  <div class="row"><span class="sw" style="background:#c9a24a"></span>پیوند TF</div>
+</div>
+<div class="viewbar">
+  <button data-view="persp" class="active">نمای پرسپکتیو</button>
+  <button data-view="top">نمای از بالا</button>
+  <button data-view="front">نمای از جلو</button>
+</div>
+<div class="hint">با کشیدن ماوس بچرخانید &middot; با اسکرول زوم کنید &middot; با راست‌کلیک جابه‌جا کنید</div>
+
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1b1c1f);
+  scene.fog = new THREE.Fog(0x1b1c1f, 8, 24);
+
+  var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+  var VIEWS = {
+    persp: { pos:[4.2, 3.4, 5.2], target:[0, 0.2, 0] },
+    top:   { pos:[0.01, 9, 0.01], target:[0, 0, 0] },
+    front: { pos:[0, 1.4, 8],     target:[0, 0.2, 0] }
+  };
+  camera.position.set.apply(camera.position, VIEWS.persp.pos);
+
+  var renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.getElementById('scene').appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  var dl = new THREE.DirectionalLight(0xffffff, 0.5); dl.position.set(4,6,4); scene.add(dl);
+
+  var grid = new THREE.GridHelper(14, 28, 0x4a4c52, 0x2e3036);
+  scene.add(grid);
+
+  // ---- frame layout: base_link at origin, chassis offset, 4 wheel links at real front/back-left/right corners ----
+  var frames = {
+    base_link: [0, 0.05, 0],
+    FL_link:   [1.3, 0, 1.0],
+    FR_link:   [1.3, 0, -1.0],
+    BL_link:   [-1.3, 0, 1.0],
+    BR_link:   [-1.3, 0, -1.0],
+    chassis:   [-1.3, 0.08, 0]   // exact midpoint of BL_link and BR_link
+  };
+  var edges = ['chassis','FL_link','FR_link','BL_link','BR_link'];
+
+  function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+  function makeAxisTip(letter, color, size){
+    var c2 = document.createElement('canvas'); c2.width=64; c2.height=64;
+    var ctx = c2.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath(); ctx.arc(32,32,25,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = color;
+    ctx.font = 'bold 40px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(letter, 32, 34);
+    var tex = new THREE.CanvasTexture(c2);
+    var mat = new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false });
+    var spr = new THREE.Sprite(mat);
+    var s = Math.max(0.16, size*0.32);
+    spr.scale.set(s, s, 1);
+    spr.renderOrder = 998;
+    return spr;
+  }
+  // All frames (including base_link and chassis) share the same orientation: local Y
+  // (the wheel joints' rolling/axle axis) is rotated to align with the world lateral axis.
+  function addAxes(pos, size, isWheel){
+    var group = new THREE.Group();
+    var ax = new THREE.AxesHelper(size);
+    group.add(ax);
+    if(isWheel){ group.rotation.x = -Math.PI/2; }
+    var tipX = makeAxisTip('X', '#e5484d', size); tipX.position.set(size*1.2, 0, 0); group.add(tipX);
+    var tipY = makeAxisTip('Y', '#4caf50', size); tipY.position.set(0, size*1.2, 0); group.add(tipY);
+    var tipZ = makeAxisTip('Z', '#4a90d9', size); tipZ.position.set(0, 0, size*1.2); group.add(tipZ);
+    group.position.set(pos[0], pos[1], pos[2]);
+    scene.add(group);
+  }
+  function makeLabelSprite(text, isRoot){
+    var c = document.createElement('canvas'); c.width=300; c.height=76;
+    var ctx = c.getContext('2d');
+    rr(ctx,4,4,292,68,12);
+    ctx.fillStyle = isRoot ? 'rgba(74,10,46,0.9)' : 'rgba(0,0,0,0.62)';
+    ctx.fill();
+    ctx.lineWidth=3;
+    ctx.strokeStyle = isRoot ? 'rgba(233,30,140,0.75)' : 'rgba(255,255,255,0.25)';
+    rr(ctx,4,4,292,68,12); ctx.stroke();
+    ctx.fillStyle = isRoot ? '#ffd7ef' : '#ffffff';
+    ctx.font = 'bold 34px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, 150, 40);
+    var tex = new THREE.CanvasTexture(c);
+    tex.minFilter = THREE.LinearFilter;
+    var mat = new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false, sizeAttenuation:true });
+    var spr = new THREE.Sprite(mat);
+    spr.scale.set(1.5, 0.38, 1);
+    spr.renderOrder = 999;
+    return spr;
+  }
+  function addLabel(pos, text, isRoot){
+    var spr = makeLabelSprite(text, isRoot);
+    spr.position.set(pos[0], pos[1] + 0.55, pos[2]);
+    scene.add(spr);
+  }
+  function addArrowToBase(linkPos, basePos){
+    var origin = new THREE.Vector3(linkPos[0], linkPos[1], linkPos[2]);
+    var target = new THREE.Vector3(basePos[0], basePos[1], basePos[2]);
+    var dir = new THREE.Vector3().subVectors(target, origin);
+    var len = dir.length();
+    dir.normalize();
+    var arrow = new THREE.ArrowHelper(dir, origin, len, 0xc9a24a, len*0.16, len*0.08);
+    arrow.line.material.transparent = true;
+    arrow.line.material.opacity = 0.85;
+    scene.add(arrow);
+  }
+  var linkNames = ['base_link','chassis','FL_link','FR_link','BL_link','BR_link'];
+  linkNames.forEach(function(name){
+    var pos = frames[name];
+    var isRoot = (name === 'base_link');
+    addAxes(pos, isRoot ? 0.5 : 0.42, true);
+    addLabel(pos, name, isRoot);
+  });
+  edges.forEach(function(name){ addArrowToBase(frames[name], frames.base_link); });
+
+  var controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 2;
+  controls.maxDistance = 26;
+  controls.target.set.apply(controls.target, VIEWS.persp.target);
+  controls.update();
+
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('.viewbar button'));
+  buttons.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      buttons.forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      var v = VIEWS[btn.getAttribute('data-view')];
+      camera.position.set(v.pos[0], v.pos[1], v.pos[2]);
+      controls.target.set(v.target[0], v.target[1], v.target[2]);
+      controls.update();
+    });
+  });
+
+  function onResize(){
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+  window.addEventListener('resize', onResize);
+
+  function animate(){
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+</script>
+</body>
+</html>

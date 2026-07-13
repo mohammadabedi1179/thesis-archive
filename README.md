@@ -37,6 +37,36 @@ runtime (via the GitHub API) and builds the tile automatically:
 Delete a file from the folder and it disappears from the site on next
 load — nothing to clean up elsewhere either.
 
+## Photo albums (like calibration photos)
+
+For a set of plain photos rather than one interactive document, there's a
+reusable album template already set up at
+`chapters/appendix/calibration-photos.html`. It works the same
+auto-discovery way as everything else:
+
+```
+chapters/appendix/calibration-photos.html      ← the album page (already built)
+chapters/appendix/calibration-photos/          ← put your photos in here
+  img1.jpg
+  img2.jpg
+  ...
+```
+
+Drop your calibration photos into that `calibration-photos/` folder and
+push — the page lists whatever's inside it automatically (same image
+formats as everywhere else: png/jpg/jpeg/webp/svg/gif), shown as a grid
+that opens into a full-screen viewer with next/previous on click. The
+album shows up as a normal tile in the Appendix shelf, same as any other
+document — it just needs a same-name cover image in `chapters/appendix/`
+(e.g. `calibration-photos.jpg`, copy one of the photos) if you want a real
+thumbnail instead of the placeholder.
+
+**Want another photo album later** (a different chapter, a different
+topic)? Copy `calibration-photos.html` to a new filename in the target
+chapter folder, change its `<title>` and `<meta name="tile-subtitle">` —
+nothing else. It auto-detects which chapter it's in and which subfolder to
+read from its own URL, so no other edit is needed.
+
 ## How this works (worth understanding before you deploy)
 
 Plain static hosting (GitHub Pages included) can't list "what files are in
@@ -96,7 +126,8 @@ above to work without authentication). Live in a minute or two at
 index.html        home page (chapter cards, counts fetched live)
 style.css           shared styles for every page
 data.js              the 6 fixed chapter sections + repo settings (rarely touched)
-gallery.js           discovery + rendering logic — the only "smart" part
+discover.js           shared GitHub folder-listing helper (used by gallery.js and photo albums)
+gallery.js           discovery + rendering logic for chapter shelves
 generate.py           optional — only needed if you add a whole new chapter/section
 
 chapters/
@@ -106,7 +137,9 @@ chapters/
   ch5/index.html
   ch5/*.html
   ch6/index.html                    (currently empty)
-  appendix/index.html               (currently empty)
+  appendix/index.html
+  appendix/calibration-photos.html  ← photo album template (see above)
+  appendix/calibration-photos/      ← put calibration photos here
   extra/index.html                  (currently empty)
 ```
 
