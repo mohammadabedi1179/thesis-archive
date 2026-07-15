@@ -18,6 +18,17 @@ const CHAPTERS = [
     blurb: 'ابزارها و تحلیل‌های جانبی خارج از ساختار اصلی متن' }
 ];
 
+/* ── Subsystem categories ────────────────────────────────────
+   Tag any document with <meta name="tile-category" content="..."> in
+   its <head> (same convention as tile-subtitle) to color-code its tile
+   by subsystem, regardless of which chapter it's filed under. Untagged
+   files just render without a color stripe — nothing breaks. */
+const CATEGORIES = {
+  vision:   { label: 'ادراک و حسگرها',      color: 'var(--primary)' },
+  hardware: { label: 'سخت‌افزار و توان',     color: 'var(--secondary)' },
+  control:  { label: 'مدل ربات و کنترل',     color: 'var(--active)' }
+};
+
 /* ── Extra home-page tiles ──────────────────────────────────
    These render next to the chapter cards but link straight to a
    single page instead of a chapters/<id>/ folder — no auto-discovery,
@@ -33,6 +44,6 @@ const EXTRA_TILES = [
    the box on a normal GitHub Pages URL: https://OWNER.github.io/REPO/).
    Only fill these in if you're using a custom domain, where the
    OWNER/REPO can't be read from the URL. */
-const REPO_OWNER = '';
-const REPO_NAME  = '';
+const REPO_OWNER = 'mohammadabedi1179';
+const REPO_NAME  = 'thesis-archive';
 const REPO_BRANCH = 'main';

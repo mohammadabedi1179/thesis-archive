@@ -130,6 +130,13 @@ body.has-texture::before{
 }
 .chapter-grid:hover .chapter-card:not(:hover){ opacity:.58; filter:saturate(.75); }
 
+.home-route-svg{ position:absolute; inset:0; pointer-events:none; overflow:visible; }
+.home-route-svg path{ fill:none; stroke:var(--edge); stroke-width:2; stroke-dasharray:5 8; stroke-linecap:round; }
+.home-route-svg circle{ fill:var(--active); opacity:.5; }
+@media (prefers-reduced-motion:reduce), (max-width:640px){
+  .home-route-svg{ display:none; }
+}
+
 .chapter-card{
   position:relative; display:flex; flex-direction:column; gap:8px;
   background:var(--paper); border:1.5px solid var(--edge); border-radius:18px;
@@ -163,7 +170,11 @@ body.has-texture::before{
 #chapter-main{
   position:relative; z-index:2; max-width:1180px; margin:0 auto; padding:18px 24px 64px;
 }
-#chapter-blurb{ font-size:13px; color:var(--muted); margin:2px 0 26px; max-width:640px; line-height:1.8; }
+#chapter-blurb{ font-size:13px; color:var(--muted); margin:2px 0 18px; max-width:640px; line-height:1.8; }
+
+.category-legend{ display:none; flex-wrap:wrap; gap:14px; margin:0 0 22px; }
+.legend-chip{ display:flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; color:var(--muted); }
+.legend-dot{ width:9px; height:9px; border-radius:50%; flex:0 0 auto; }
 
 #tile-grid{ overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch; }
 #tile-grid::-webkit-scrollbar{ height:8px; }
@@ -214,6 +225,7 @@ body.has-texture::before{
   box-shadow:0 18px 34px rgba(70,63,58,.22);
   display:flex; flex-direction:column;
 }
+.tile3d-front.has-category{ border-inline-start:5px solid var(--cat-color); }
 .tile3d-preview{ position:relative; flex:1; overflow:hidden; background:var(--grid); }
 .tile3d-img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 .tile3d-placeholder{

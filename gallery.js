@@ -33,6 +33,7 @@ async function fetchFileMeta(fileEntry){
   let title = fileEntry.name.replace(/\.html?$/i, '');
   let subtitle = '';
   let lang = 'en';
+  let category = null;
 
   try {
     const res = await fetch(fileEntry.downloadUrl);
@@ -45,6 +46,12 @@ async function fetchFileMeta(fileEntry){
     const subMeta = doc.querySelector('meta[name="tile-subtitle"]');
     if (subMeta) subtitle = subMeta.getAttribute('content') || '';
 
+    const catMeta = doc.querySelector('meta[name="tile-category"]');
+    if (catMeta) {
+      const val = (catMeta.getAttribute('content') || '').trim();
+      if (typeof CATEGORIES !== 'undefined' && CATEGORIES[val]) category = val;
+    }
+
     const htmlLang = doc.documentElement.getAttribute('lang') || '';
     const dir = doc.documentElement.getAttribute('dir') || '';
     lang = (htmlLang.startsWith('fa') || dir === 'rtl') ? 'fa' : 'en';
@@ -56,7 +63,7 @@ async function fetchFileMeta(fileEntry){
     id: fileEntry.name.replace(/\.html?$/i, ''),
     file: fileEntry.name,
     image: fileEntry.image,
-    title, subtitle, lang
+    title, subtitle, lang, category
   };
 }
 
@@ -89,6 +96,7 @@ async function renderHome(){
   ).join('');
 
   grid.innerHTML = chapterTiles + extraTiles;
+  renderHomeRoute();
 
   const results = await Promise.allSettled(CHAPTERS.map(ch => listChapterFiles(ch.id)));
 
@@ -111,6 +119,55 @@ async function renderHome(){
 
   document.getElementById('totalCount').textContent =
     `${toFa(total)} سند تعاملی در ${toFa(CHAPTERS.length)} بخش`;
+
+  renderHomeRoute();
+  if (!renderHomeRoute.resizeWired) {
+    let t;
+    window.addEventListener('resize', () => {
+      clearTimeout(t);
+      t = setTimeout(renderHomeRoute, 150);
+    });
+    renderHomeRoute.resizeWired = true;
+  }
+}
+
+/* Draws a soft dashed route connecting the chapter/extra cards in
+   reading order — behind the cards, so it only shows through the gaps
+   between them. Recomputed on load and on resize since the grid
+   reflows responsively. */
+function renderHomeRoute(){
+  const grid = document.getElementById('chapter-grid');
+  if (!grid) return;
+  const cards = Array.from(grid.querySelectorAll('.chapter-card'));
+  if (cards.length < 2) return;
+
+  let svg = grid.querySelector('#home-route-svg');
+  if (!svg) {
+    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('id', 'home-route-svg');
+    svg.setAttribute('class', 'home-route-svg');
+    grid.insertBefore(svg, grid.firstChild);
+  }
+
+  const gridRect = grid.getBoundingClientRect();
+  svg.setAttribute('width', gridRect.width);
+  svg.setAttribute('height', gridRect.height);
+  svg.setAttribute('viewBox', `0 0 ${gridRect.width} ${gridRect.height}`);
+
+  const points = cards.map(card => {
+    const r = card.getBoundingClientRect();
+    return { x: r.left - gridRect.left + r.width / 2, y: r.top - gridRect.top + r.height / 2 };
+  });
+
+  let d = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 1; i < points.length; i++) {
+    const p0 = points[i - 1], p1 = points[i];
+    const midY = (p0.y + p1.y) / 2;
+    d += ` C ${p0.x} ${midY}, ${p1.x} ${midY}, ${p1.x} ${p1.y}`;
+  }
+
+  const dots = points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="4.5"></circle>`).join('');
+  svg.innerHTML = `<path d="${d}"></path>${dots}`;
 }
 
 /* ── Cross-chapter quick nav (compact pills in the sub-bar) ────── */
@@ -130,6 +187,21 @@ function renderChapterPills(activeId){
   ).join('');
 
   nav.innerHTML = chapterPills + extraPills;
+}
+
+/* ── Subsystem-color legend (only shows categories present in this chapter) ── */
+function renderCategoryLegend(items){
+  const el = document.getElementById('category-legend');
+  if (!el) return;
+
+  const present = [...new Set(items.map(it => it.category).filter(Boolean))];
+  if (!present.length) { el.style.display = 'none'; return; }
+
+  el.style.display = 'flex';
+  el.innerHTML = present.map(key => {
+    const cat = CATEGORIES[key];
+    return `<span class="legend-chip"><span class="legend-dot" style="background:${cat.color}"></span>${cat.label}</span>`;
+  }).join('');
 }
 
 /* ── Chapter page: 3D document shelf ────────────────────────── */
@@ -170,15 +242,19 @@ async function renderChapter(chapterId){
     return;
   }
 
+  renderCategoryLegend(items);
+
   mount.style.display = 'block';
   mount.innerHTML = `
     <div class="stage3d-wrap" id="stageWrap">
       <div class="shelf" id="shelf">
-        ${items.map((it, i) => `
+        ${items.map((it, i) => {
+          const cat = it.category && CATEGORIES[it.category] ? CATEGORIES[it.category] : null;
+          return `
           <div class="tile3d-persp">
             <a class="tile3d" data-index="${i}" data-id="${it.id}"
                href="${it.file}" tabindex="0">
-              <div class="tile3d-front">
+              <div class="tile3d-front${cat ? ' has-category' : ''}"${cat ? ` style="--cat-color:${cat.color}"` : ''}>
                 <div class="tile3d-preview">
                   ${it.image
                     ? `<img class="tile3d-img" src="${it.image}" alt="" loading="lazy">`
@@ -195,7 +271,8 @@ async function renderChapter(chapterId){
               </div>
             </a>
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     </div>`;
 

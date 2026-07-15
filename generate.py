@@ -56,6 +56,7 @@ CHAPTER_PAGE = """<!DOCTYPE html>
 
   <main id="chapter-main">
     <p id="chapter-blurb"></p>
+    <div id="category-legend" class="category-legend"></div>
 
     <div id="loading-chapter" class="loading-chapter">
       <span class="spinner"></span>
