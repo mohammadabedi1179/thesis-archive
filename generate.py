@@ -20,7 +20,6 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # (chapter_id, <title> tag text)
 CHAPTERS = [
-    ('ch3',      'فصل ۳ — روش پژوهش و چهارچوب پیشنهادی'),
     ('ch4',      'فصل ۴ — طراحی و شبیه‌سازی'),
     ('ch5',      'فصل ۵ — پیاده‌سازی عملی، ساخت نمونه و آزمون‌های واقعی'),
     ('ch6',      'فصل ۶ — ارزیابی و تحلیل نتایج'),
@@ -46,12 +45,14 @@ CHAPTER_PAGE = """<!DOCTYPE html>
       <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </a>
     <div class="crumb">
-      <span class="crumb-root">نقشه‌راه</span>
+      <a class="crumb-root" href="../../">نقشه‌راه</a>
       <span class="crumb-sep">/</span>
       <span id="chapter-heading" class="crumb-current"></span>
     </div>
     <span id="chapter-count" class="topbar-count"></span>
   </header>
+
+  <nav id="chapter-pills" class="chapter-pills" aria-label="پیمایش سریع بین فصل‌ها"></nav>
 
   <main id="chapter-main">
     <p id="chapter-blurb"></p>

@@ -113,6 +113,25 @@ async function renderHome(){
     `${toFa(total)} سند تعاملی در ${toFa(CHAPTERS.length)} بخش`;
 }
 
+/* ── Cross-chapter quick nav (compact pills in the sub-bar) ────── */
+function renderChapterPills(activeId){
+  const nav = document.getElementById('chapter-pills');
+  if (!nav) return;
+
+  const chapterPills = CHAPTERS.map(ch => {
+    const active = ch.id === activeId;
+    return active
+      ? `<span class="pill is-active" title="${ch.title}">${ch.num}</span>`
+      : `<a class="pill" href="../${ch.id}/" title="${ch.title}">${ch.num}</a>`;
+  }).join('');
+
+  const extraPills = (typeof EXTRA_TILES !== 'undefined' ? EXTRA_TILES : []).map(tile =>
+    `<a class="pill is-extra" href="../../${tile.href}" title="${tile.title}">${tile.num}</a>`
+  ).join('');
+
+  nav.innerHTML = chapterPills + extraPills;
+}
+
 /* ── Chapter page: 3D document shelf ────────────────────────── */
 async function renderChapter(chapterId){
   const mount = document.getElementById('tile-grid');
@@ -121,6 +140,7 @@ async function renderChapter(chapterId){
   const chapter = CHAPTERS.find(c => c.id === chapterId);
   document.getElementById('chapter-heading').textContent = chapter.title;
   document.getElementById('chapter-blurb').textContent = chapter.blurb;
+  renderChapterPills(chapterId);
 
   const loadingEl = document.getElementById('loading-chapter');
   const emptyEl = document.getElementById('empty-chapter');
@@ -153,9 +173,9 @@ async function renderChapter(chapterId){
   mount.style.display = 'block';
   mount.innerHTML = `
     <div class="stage3d-wrap" id="stageWrap">
-      <div class="stage3d">
-        <div class="shelf" id="shelf">
-          ${items.map((it, i) => `
+      <div class="shelf" id="shelf">
+        ${items.map((it, i) => `
+          <div class="tile3d-persp">
             <a class="tile3d" data-index="${i}" data-id="${it.id}"
                href="${it.file}" tabindex="0">
               <div class="tile3d-front">
@@ -174,8 +194,8 @@ async function renderChapter(chapterId){
                 </div>
               </div>
             </a>
-          `).join('')}
-        </div>
+          </div>
+        `).join('')}
       </div>
     </div>`;
 
@@ -190,14 +210,15 @@ function wireShelf(items){
     const onEnter = () => {
       shelf.classList.add('has-hover');
       tiles.forEach((t, j) => {
-        t.classList.remove('nudge-l', 'nudge-r');
-        if (j === i - 1) t.classList.add('nudge-l');
-        if (j === i + 1) t.classList.add('nudge-r');
+        const w = t.closest('.tile3d-persp');
+        w.classList.remove('nudge-l', 'nudge-r');
+        if (j === i - 1) w.classList.add('nudge-l');
+        if (j === i + 1) w.classList.add('nudge-r');
       });
     };
     const onLeave = () => {
       shelf.classList.remove('has-hover');
-      tiles.forEach(t => t.classList.remove('nudge-l', 'nudge-r'));
+      tiles.forEach(t => t.closest('.tile3d-persp').classList.remove('nudge-l', 'nudge-r'));
     };
     tile.addEventListener('mouseenter', onEnter);
     tile.addEventListener('mouseleave', onLeave);
@@ -225,7 +246,7 @@ function expandTile(tileEl, item, href){
   const rect = front.getBoundingClientRect();
 
   const overlay = document.createElement('div');
-  overlay.style.cssText = `position:fixed; top:${rect.top}px; left:${rect.left}px; width:${rect.width}px; height:${rect.height}px; border-radius:14px; overflow:hidden; z-index:999; background:var(--paper); box-shadow:0 30px 70px rgba(70,63,58,.35); transition:top .5s cubic-bezier(.22,.9,.3,1), left .5s cubic-bezier(.22,.9,.3,1), width .5s cubic-bezier(.22,.9,.3,1), height .5s cubic-bezier(.22,.9,.3,1), border-radius .5s ease;`;
+  overlay.style.cssText = `position:fixed; top:${rect.top}px; left:${rect.left}px; width:${rect.width}px; height:${rect.height}px; border-radius:14px; overflow:hidden; z-index:999; background:var(--paper); box-shadow:0 30px 70px rgba(70,63,58,.35); transition:top .6s cubic-bezier(.16,1,.3,1), left .6s cubic-bezier(.16,1,.3,1), width .6s cubic-bezier(.16,1,.3,1), height .6s cubic-bezier(.16,1,.3,1), border-radius .6s ease;`;
 
   const iframe = document.createElement('iframe');
   iframe.src = item.file;
@@ -245,7 +266,7 @@ function expandTile(tileEl, item, href){
     overlay.style.borderRadius = '0';
   });
 
-  setTimeout(() => { window.location.href = href; }, 520);
+  setTimeout(() => { window.location.href = href; }, 600);
 }
 
 /* ── Boot ────────────────────────────────────────────────────── */

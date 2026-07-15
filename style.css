@@ -68,8 +68,53 @@ body.has-texture::before{
 .crumb-sep{ color:var(--faint); }
 .crumb-current{ font-size:15px; }
 .topbar-count{ margin-inline-start:auto; font-size:12px; font-weight:700; color:var(--muted); }
+.crumb-root{ text-decoration:none; transition:color .15s ease; }
+.crumb-root:hover{ color:var(--primary); }
+
+.chapter-pills{
+  position:relative; z-index:2; display:flex; gap:8px;
+  max-width:1180px; margin:14px auto 0; padding:0 24px;
+  overflow-x:auto;
+}
+.chapter-pills .pill{
+  flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+  width:30px; height:30px; border-radius:50%;
+  border:1.5px solid var(--edge); background:var(--paper);
+  font-size:12.5px; font-weight:700; color:var(--muted);
+  text-decoration:none; cursor:pointer;
+  transition:border-color .15s ease, color .15s ease, background .15s ease;
+}
+.chapter-pills a.pill:hover{ border-color:var(--primary); color:var(--primary); }
+.chapter-pills .pill.is-active{ background:var(--active); border-color:var(--active); color:var(--paper); cursor:default; }
+.chapter-pills .pill.is-extra{ border-style:dashed; }
+@media (max-width:640px){
+  .chapter-pills{ padding:0 16px; }
+}
 
 /* ═════════════════════════ HOME PAGE ═══════════════════════════ */
+.cover-block{
+  position:relative; z-index:2; max-width:820px; margin:38px auto 0;
+  padding:0 24px 30px; text-align:center; border-bottom:1.5px solid var(--edge);
+}
+.cover-eyebrow{
+  font-size:11.5px; font-weight:700; letter-spacing:.08em; color:var(--primary);
+  margin:0 0 10px;
+}
+.cover-title{
+  font-size:22px; font-weight:800; line-height:1.6; margin:0 0 16px; color:var(--text);
+}
+.cover-meta{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px;
+  font-size:12.5px; color:var(--muted);
+}
+.cover-meta strong{ color:var(--text); font-weight:700; }
+.cover-sep{ color:var(--faint); }
+@media (max-width:640px){
+  .cover-title{ font-size:18px; }
+  .cover-meta{ flex-direction:column; gap:4px; }
+  .cover-sep{ display:none; }
+}
+
 .hero{
   position:relative; z-index:2; max-width:1180px; margin:0 auto;
   padding:34px 24px 8px; text-align:center;
@@ -126,32 +171,42 @@ body.has-texture::before{
 #tile-grid::-webkit-scrollbar-track{ background:transparent; }
 
 .stage3d-wrap{ position:relative; padding:70px 24px 56px; }
-.stage3d{ perspective:1700px; perspective-origin:50% 26%; position:relative; z-index:1; }
 .shelf{
-  display:flex; justify-content:center; gap:34px; transform-style:preserve-3d;
+  display:flex; justify-content:center; gap:14px;
   width:max-content; margin:0 auto; padding:0 10px;
 }
 
-.tile3d{
+/* Each tile gets its own perspective/vanishing point, centered on
+   itself — this is what keeps the tilt visually identical for every
+   tile regardless of its position in a long, scrollable row. A single
+   perspective shared across the whole row (the old approach) makes
+   tiles farther from the center look increasingly skewed, which is
+   not what we want. */
+.tile3d-persp{
   position:relative; width:216px; height:296px; flex:0 0 auto;
+  perspective:1400px; perspective-origin:50% 50%;
+  transition:margin .65s cubic-bezier(.16,1,.3,1);
+}
+
+.tile3d{
+  position:relative; display:block; width:100%; height:100%;
   transform-style:preserve-3d; transform-origin:50% 50%;
-  transform:rotateY(-25deg);
-  transition:transform .5s cubic-bezier(.22,.9,.3,1), margin .5s cubic-bezier(.22,.9,.3,1),
-             opacity .3s ease, filter .3s ease;
+  transform:rotateY(-38deg);
+  transition:transform .65s cubic-bezier(.16,1,.3,1), opacity .4s ease, filter .4s ease;
   cursor:pointer;
 }
 .tile3d::before{
   content:""; position:absolute; left:8%; right:8%; bottom:-20px; height:20px; border-radius:50%;
   background:radial-gradient(ellipse at center, rgba(70,63,58,.35), transparent 75%);
-  opacity:.8; transition:opacity .35s ease, transform .35s ease;
+  opacity:.8; transition:opacity .4s ease, transform .4s ease;
 }
-.tile3d:hover{ transform:rotateY(0deg) translateZ(96px) scale(1.09); z-index:5; }
+.tile3d:hover{ transform:rotateY(0deg) translateZ(112px) scale(1.1); z-index:5; }
 .tile3d:hover::before{ opacity:.4; transform:translateY(8px) scale(1.15); }
 .tile3d:focus-visible{ outline:2px solid var(--primary); outline-offset:4px; }
 
 .shelf.has-hover .tile3d:not(:hover){ opacity:.5; filter:saturate(.55) brightness(.92); }
-.shelf.has-hover .tile3d.nudge-l{ margin-inline-end:48px; }
-.shelf.has-hover .tile3d.nudge-r{ margin-inline-start:48px; }
+.shelf.has-hover .tile3d-persp.nudge-l{ margin-inline-end:38px; }
+.shelf.has-hover .tile3d-persp.nudge-r{ margin-inline-start:38px; }
 
 .tile3d-front{
   position:relative; width:100%; height:100%; border-radius:14px; overflow:hidden;
@@ -254,7 +309,7 @@ body.has-texture::before{
   .hero h2{ font-size:20px; }
   .chapter-grid, #chapter-main{ padding-inline:16px; }
   .chapter-grid{ grid-template-columns:1fr; }
-  .tile3d{ width:150px; height:206px; }
+  .tile3d-persp{ width:150px; height:206px; }
   .shelf{ gap:18px; }
   .tile3d-title{ font-size:11.5px; }
   .tile3d-sub{ display:none; }
@@ -263,5 +318,5 @@ body.has-texture::before{
 
 /* ── Motion preferences ──────────────────────────────────────── */
 @media (prefers-reduced-motion:reduce){
-  .chapter-card, .tile3d, .icon-btn{ transition:none !important; }
+  .chapter-card, .tile3d, .tile3d-persp, .icon-btn{ transition:none !important; }
 }
