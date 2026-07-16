@@ -24,9 +24,12 @@ const CHAPTERS = [
    by subsystem, regardless of which chapter it's filed under. Untagged
    files just render without a color stripe — nothing breaks. */
 const CATEGORIES = {
-  vision:   { label: 'ادراک و حسگرها',      color: 'var(--primary)' },
-  hardware: { label: 'سخت‌افزار و توان',     color: 'var(--secondary)' },
-  control:  { label: 'مدل ربات و کنترل',     color: 'var(--active)' }
+  vision:             { label: 'ادراک و حسگرها',      color: 'var(--primary)' },
+  hardware:           { label: 'سخت‌افزار و توان',     color: 'var(--secondary)' },
+  control:            { label: 'مدل ربات و کنترل',     color: 'var(--active)' },
+  evaluation:         { label: 'ارزیابی',              color: '#5B7FA6' },
+  'training-teacher': { label: 'آموزش — معلم',         color: '#8171A8' },
+  'training-student': { label: 'آموزش — دانش‌آموز',    color: '#6E8F5D' }
 };
 
 /* ── Extra home-page tiles ──────────────────────────────────
