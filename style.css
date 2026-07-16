@@ -15,7 +15,33 @@
   --active:  #C2703D;  /* terracotta — selected / emphasis */
   --shadow:  rgba(70,63,58,.14);
   --shadow-lg:rgba(70,63,58,.22);
+  --contact-shadow: rgba(70,63,58,.35);
+  --texture-line: rgba(232,221,210,0.55);
+  color-scheme: light;
 }
+
+/* "Night drive" — same warm identity, inverted for low light. Colors
+   are lightened (not just palette-swapped) so they keep enough
+   contrast against a dark background. */
+html[data-theme="dark"]{
+  --bg:      #1C1917;
+  --paper:   #262220;
+  --grid:    #322D29;
+  --edge:    #453E38;
+  --text:    #EDE6DE;
+  --muted:   #A89C90;
+  --faint:   #6E645C;
+  --primary: #8FB5B3;
+  --secondary:#DCB98C;
+  --active:  #E2895A;
+  --shadow:  rgba(0,0,0,.4);
+  --shadow-lg:rgba(0,0,0,.55);
+  --contact-shadow: rgba(0,0,0,.5);
+  --texture-line: rgba(255,255,255,.05);
+  color-scheme: dark;
+}
+html{ transition:background-color .25s ease; }
+body{ transition:background-color .25s ease, color .25s ease; }
 
 *{ box-sizing:border-box; }
 html,body{ margin:0; background:var(--bg); }
@@ -33,8 +59,8 @@ svg{ display:block; }
 body.has-texture::before{
   content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
   background-image:
-    linear-gradient(to right, rgba(232,221,210,0.55) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(232,221,210,0.55) 1px, transparent 1px);
+    linear-gradient(to right, var(--texture-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--texture-line) 1px, transparent 1px);
   background-size:56px 56px;
   mask-image: radial-gradient(circle at 50% 20%, black 0%, transparent 70%);
 }
@@ -53,6 +79,12 @@ body.has-texture::before{
 }
 .icon-btn:hover{ background:var(--grid); border-color:var(--primary); }
 .icon-btn svg{ width:17px; height:17px; }
+
+.theme-toggle{ margin-inline-start:auto; }
+.theme-toggle .icon-sun{ display:none; }
+.theme-toggle .icon-moon{ display:block; }
+html[data-theme="dark"] .theme-toggle .icon-sun{ display:block; }
+html[data-theme="dark"] .theme-toggle .icon-moon{ display:none; }
 
 .brand{ display:flex; align-items:center; gap:12px; }
 .brand-mark{ width:42px; height:20px; overflow:visible; }
@@ -208,7 +240,7 @@ body.has-texture::before{
 }
 .tile3d::before{
   content:""; position:absolute; left:8%; right:8%; bottom:-20px; height:20px; border-radius:50%;
-  background:radial-gradient(ellipse at center, rgba(70,63,58,.35), transparent 75%);
+  background:radial-gradient(ellipse at center, var(--contact-shadow), transparent 75%);
   opacity:.8; transition:opacity .4s ease, transform .4s ease;
 }
 .tile3d:hover{ transform:rotateY(0deg) translateZ(112px) scale(1.1); z-index:5; }
@@ -222,7 +254,7 @@ body.has-texture::before{
 .tile3d-front{
   position:relative; width:100%; height:100%; border-radius:14px; overflow:hidden;
   background:var(--paper); border:1.5px solid var(--edge);
-  box-shadow:0 18px 34px rgba(70,63,58,.22);
+  box-shadow:0 18px 34px var(--shadow-lg);
   display:flex; flex-direction:column;
 }
 .tile3d-front.has-category{ border-inline-start:5px solid var(--cat-color); }
@@ -313,6 +345,9 @@ body.has-texture::before{
   .lightbox-close{ width:36px; height:36px; }
 }
 
+.expand-route-path{ fill:none; stroke:var(--active); stroke-width:2.5; stroke-linecap:round; }
+.expand-route-dot{ fill:var(--active); }
+
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width:640px){
   #topbar{ padding:16px 16px 0; }
@@ -331,4 +366,5 @@ body.has-texture::before{
 /* ── Motion preferences ──────────────────────────────────────── */
 @media (prefers-reduced-motion:reduce){
   .chapter-card, .tile3d, .tile3d-persp, .icon-btn{ transition:none !important; }
+  html, body{ transition:none !important; }
 }

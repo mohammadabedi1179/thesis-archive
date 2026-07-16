@@ -316,11 +316,49 @@ function wireShelf(items){
   });
 }
 
+/* A short dashed line "launches" from the clicked tile toward the top
+   of the screen while the tile itself expands — reinforcing that
+   you're travelling to the document, not just watching a box resize. */
+function drawExpandRoute(startX, startY){
+  const endX = window.innerWidth / 2;
+  const endY = window.innerHeight * 0.12;
+  const midY = (startY + endY) / 2;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'expand-route-svg');
+  svg.style.cssText = 'position:fixed; inset:0; width:100vw; height:100vh; z-index:1000; pointer-events:none;';
+  svg.innerHTML = `
+    <path class="expand-route-path" d="M ${startX} ${startY} Q ${startX} ${midY}, ${endX} ${endY}"></path>
+    <circle class="expand-route-dot" cx="${startX}" cy="${startY}" r="4"></circle>
+  `;
+  document.body.appendChild(svg);
+
+  const path = svg.querySelector('.expand-route-path');
+  const len = path.getTotalLength();
+  path.style.strokeDasharray = len;
+  path.style.strokeDashoffset = len;
+
+  requestAnimationFrame(() => {
+    path.style.transition = 'stroke-dashoffset .5s cubic-bezier(.16,1,.3,1)';
+    path.style.strokeDashoffset = '0';
+  });
+
+  setTimeout(() => {
+    svg.style.transition = 'opacity .25s ease';
+    svg.style.opacity = '0';
+  }, 480);
+  setTimeout(() => svg.remove(), 750);
+}
+
 /* Animate the clicked tile growing to fill the screen, then hand off
    to the document's real URL. */
 function expandTile(tileEl, item, href){
   const front = tileEl.querySelector('.tile3d-front');
   const rect = front.getBoundingClientRect();
+
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    drawExpandRoute(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  }
 
   const overlay = document.createElement('div');
   overlay.style.cssText = `position:fixed; top:${rect.top}px; left:${rect.left}px; width:${rect.width}px; height:${rect.height}px; border-radius:14px; overflow:hidden; z-index:999; background:var(--paper); box-shadow:0 30px 70px rgba(70,63,58,.35); transition:top .6s cubic-bezier(.16,1,.3,1), left .6s cubic-bezier(.16,1,.3,1), width .6s cubic-bezier(.16,1,.3,1), height .6s cubic-bezier(.16,1,.3,1), border-radius .6s ease;`;
@@ -347,7 +385,22 @@ function expandTile(tileEl, item, href){
 }
 
 /* ── Boot ────────────────────────────────────────────────────── */
+/* ── Theme toggle (light / "night drive" dark) ──────────────────
+   The initial theme is set by a tiny inline script in <head>, before
+   first paint, to avoid a flash of the wrong theme. This just wires
+   up the click handler for switching it afterward. */
+function initThemeToggle(){
+  const btn = document.getElementById('themeToggle');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) { /* private-browsing storage block, ignore */ }
+  });
+}
+
 (function init(){
+  initThemeToggle();
   const page = document.body.dataset.page;
   if (page === 'home') renderHome();
   if (page === 'chapter') renderChapter(document.body.dataset.chapter);
