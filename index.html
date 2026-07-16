@@ -54,17 +54,7 @@
     <span id="totalCount"></span>
   </div>
 
-  <div class="route-hero" aria-hidden="true">
-    <svg class="route-hero-svg" viewBox="0 0 240 90">
-      <path class="guide-path" d="M14,55 C40,55 50,25 80,25 S120,55 120,55 C120,55 140,85 160,85 S200,55 226,55"/>
-      <circle class="obstacle" cx="80" cy="55" r="5"/>
-      <circle class="obstacle" cx="160" cy="55" r="5"/>
-      <g class="scooter-icon">
-        <rect x="-7" y="-4" width="14" height="8" rx="3"/>
-        <path d="M4,0 L9,0"/>
-      </g>
-    </svg>
-  </div>
+  <canvas id="pathCanvas" class="path-canvas" aria-hidden="true"></canvas>
 
   <main id="chapter-grid" class="chapter-grid"><!-- populated by gallery.js --></main>
 

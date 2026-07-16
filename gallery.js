@@ -416,9 +416,149 @@ function initThemeToggle(){
   });
 }
 
+/* ── Mouse-drawn path + follower (home page) ────────────────────
+   Moving the mouse leaves a trail that fades after ~1s. A small
+   follower continuously eases toward the most recent point of that
+   trail. Clicking a chapter card sets that card's position as a goal;
+   the trail stops growing, the follower drives to the goal, and once
+   it arrives the real navigation happens — the click isn't ignored,
+   it's just delayed by a short, satisfying "drive there" animation.
+   Skipped entirely on touch devices and for reduced-motion users;
+   those get instant, ordinary link clicks instead. */
+function initPathFollower(){
+  const canvas = document.getElementById('pathCanvas');
+  const grid = document.getElementById('chapter-grid');
+  if (!canvas || !grid) return;
+  if (window.matchMedia('(hover: none)').matches) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const ctx = canvas.getContext('2d');
+  const TRAIL_MS = 1000;
+  const GOAL_RADIUS = 6;
+  const GOAL_TIMEOUT_MS = 1400;
+
+  let trail = [];
+  let follower = null;
+  let goal = null;
+  let goalStartedAt = 0;
+  let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  function activeColor(){
+    return getComputedStyle(document.documentElement).getPropertyValue('--active').trim() || '#C2703D';
+  }
+  let strokeColor = activeColor();
+  document.getElementById('themeToggle')?.addEventListener('click', () => {
+    setTimeout(() => { strokeColor = activeColor(); }, 260);
+  });
+
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  window.addEventListener('mousemove', (e) => {
+    if (goal) return;
+    trail.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+    if (!follower) follower = { x: e.clientX, y: e.clientY };
+  });
+
+  grid.addEventListener('click', (e) => {
+    const card = e.target.closest('.chapter-card');
+    if (!card || !follower) return; // no prior mouse movement (touch/keyboard) — let it navigate normally
+    e.preventDefault();
+    const rect = card.getBoundingClientRect();
+    goal = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, href: card.getAttribute('href') };
+    goalStartedAt = performance.now();
+  });
+
+  function hexToRgb(hex){
+    const m = hex.replace('#', '').match(/.{1,2}/g);
+    if (!m) return { r: 194, g: 112, b: 61 };
+    const [r, g, b] = m.map(h => parseInt(h, 16));
+    return { r, g, b };
+  }
+
+  function drawFollower(x, y, angle){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = strokeColor;
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(-7, -4, 14, 8, 3);
+      ctx.fill();
+    } else {
+      ctx.fillRect(-7, -4, 14, 8);
+    }
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(4, 0);
+    ctx.lineTo(9, 0);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function frame(){
+    const now = performance.now();
+    if (!goal) trail = trail.filter(p => now - p.t < TRAIL_MS);
+
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+
+    const rgb = hexToRgb(strokeColor.startsWith('#') ? strokeColor : '#C2703D');
+    if (trail.length > 1) {
+      for (let i = 1; i < trail.length; i++) {
+        const p0 = trail[i - 1], p1 = trail[i];
+        const age = now - p1.t;
+        const alpha = Math.max(0, 1 - age / TRAIL_MS) * 0.55;
+        ctx.strokeStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+      }
+    }
+
+    const target = goal || trail[trail.length - 1];
+    if (target && follower) {
+      const dx = target.x - follower.x, dy = target.y - follower.y;
+      const dist = Math.hypot(dx, dy);
+      const ease = goal ? 0.1 : 0.16;
+      if (dist > 0.5) {
+        follower.x += dx * ease;
+        follower.y += dy * ease;
+        drawFollower(follower.x, follower.y, Math.atan2(dy, dx));
+      } else {
+        drawFollower(follower.x, follower.y, 0);
+      }
+
+      if (goal) {
+        const reached = dist < GOAL_RADIUS;
+        const timedOut = now - goalStartedAt > GOAL_TIMEOUT_MS;
+        if (reached || timedOut) {
+          window.location.href = goal.href;
+          return;
+        }
+      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
 (function init(){
   initThemeToggle();
   const page = document.body.dataset.page;
-  if (page === 'home') renderHome();
+  if (page === 'home') { renderHome(); initPathFollower(); }
   if (page === 'chapter') renderChapter(document.body.dataset.chapter);
 })();
