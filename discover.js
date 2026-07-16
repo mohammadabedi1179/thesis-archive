@@ -42,6 +42,23 @@ function isImageName(name){
   return !!(m && IMAGE_EXTS.includes(m[2].toLowerCase()));
 }
 
+/* Most recent commit datetime on the configured branch, or null if it
+   can't be determined (offline, rate-limited, not yet published). */
+async function fetchLastUpdated(){
+  const repo = detectRepo();
+  if (!repo) return null;
+  try {
+    const url = `https://api.github.com/repos/${repo.owner}/${repo.repo}/commits?per_page=1&sha=${repo.branch}`;
+    const res = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.length) return null;
+    return new Date(data[0].commit.committer.date);
+  } catch (e) {
+    return null;
+  }
+}
+
 /* User-facing message for a caught discovery error. */
 function discoveryErrorMessage(err){
   return err.message === 'RATE_LIMIT'

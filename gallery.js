@@ -9,6 +9,19 @@ function toFa(n){
   return String(n).replace(/\d/g, d => map[d]);
 }
 
+function relativeTimeFa(date){
+  const mins = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (mins < 2) return 'همین الان';
+  if (mins < 60) return `${toFa(mins)} دقیقه پیش`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${toFa(hours)} ساعت پیش`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${toFa(days)} روز پیش`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${toFa(months)} ماه پیش`;
+  return `${toFa(Math.floor(months / 12))} سال پیش`;
+}
+
 /* ── GitHub-backed chapter listing (built on discover.js) ──────── */
 async function listChapterFiles(chapterId){
   const entries = await listFolder(`chapters/${chapterId}`);
@@ -98,7 +111,10 @@ async function renderHome(){
   grid.innerHTML = chapterTiles + extraTiles;
   renderHomeRoute();
 
-  const results = await Promise.allSettled(CHAPTERS.map(ch => listChapterFiles(ch.id)));
+  const [results, lastUpdated] = await Promise.all([
+    Promise.allSettled(CHAPTERS.map(ch => listChapterFiles(ch.id))),
+    fetchLastUpdated()
+  ]);
 
   let total = 0;
   results.forEach((r, i) => {
@@ -117,8 +133,9 @@ async function renderHome(){
     }
   });
 
-  document.getElementById('totalCount').textContent =
-    `${toFa(total)} سند تعاملی در ${toFa(CHAPTERS.length)} بخش`;
+  const countText = `${toFa(total)} سند تعاملی در ${toFa(CHAPTERS.length)} بخش`;
+  const updatedText = lastUpdated ? ` — آخرین بروزرسانی ${relativeTimeFa(lastUpdated)}` : '';
+  document.getElementById('totalCount').textContent = countText + updatedText;
 
   renderHomeRoute();
   if (!renderHomeRoute.resizeWired) {
